@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -42,9 +43,14 @@ class _StudioTransitionControlState
   double _tbarPosition = 0.0;
   bool _isDragging = false;
   bool _isCompleting = false;
+  bool _isCoolingDown = false;
+  bool _touchActive = false;
   int _lastHapticDetent = 0;
   Timer? _tbarThrottleTimer;
+  Timer? _cooldownTimer;
   double? _pendingTbarPos;
+
+  bool _animatingToCompletion = false;
 
   late final AnimationController _snapController;
   late Animation<double> _snapAnimation;
@@ -52,39 +58,35 @@ class _StudioTransitionControlState
   @override
   void initState() {
     super.initState();
-    _snapController =
-        AnimationController(
-            vsync: this,
-            duration: const Duration(milliseconds: 220),
-          )
-          ..addListener(() {
-            setState(() {
-              _tbarPosition = _snapAnimation.value;
-            });
-          })
-          ..addStatusListener((status) {
-            if (status == AnimationStatus.completed) {
-              if (mounted) {
-                setState(() {
-                  _tbarPosition = 0.0;
-                  _isCompleting = false;
-                });
-              }
-            }
-          });
+    _snapController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 200),
+    )..addListener(() {
+        setState(() {
+          _tbarPosition = _snapAnimation.value;
+        });
+        if (_animatingToCompletion) {
+          _sendThrottledTBar(_tbarPosition, release: false);
+        }
+      });
   }
 
   @override
   void dispose() {
     _snapController.dispose();
     _tbarThrottleTimer?.cancel();
+    _cooldownTimer?.cancel();
     super.dispose();
   }
 
   void _handleCut() {
     _snapController.stop();
+    _cooldownTimer?.cancel();
     _isCompleting = false;
+    _isCoolingDown = false;
+    _animatingToCompletion = false;
     _isDragging = false;
+    _touchActive = false;
     _sendThrottledTBar(0.0, release: true);
     setState(() {
       _tbarPosition = 0.0;
@@ -94,8 +96,12 @@ class _StudioTransitionControlState
 
   void _handleFade() {
     _snapController.stop();
+    _cooldownTimer?.cancel();
     _isCompleting = false;
+    _isCoolingDown = false;
+    _animatingToCompletion = false;
     _isDragging = false;
+    _touchActive = false;
     _sendThrottledTBar(0.0, release: true);
     setState(() {
       _tbarPosition = 0.0;
@@ -106,6 +112,7 @@ class _StudioTransitionControlState
   void _sendThrottledTBar(double pos, {bool release = false}) {
     if (release) {
       _tbarThrottleTimer?.cancel();
+      _tbarThrottleTimer = null;
       _pendingTbarPos = null;
       ref.read(scenesProvider.notifier).setTBarPosition(pos, release: true);
       return;
@@ -114,49 +121,115 @@ class _StudioTransitionControlState
     _pendingTbarPos = pos;
     if (_tbarThrottleTimer != null && _tbarThrottleTimer!.isActive) return;
 
-    // Send immediately on first change, throttle high-frequency events to 25ms
+    // Send immediately on first change
     ref.read(scenesProvider.notifier).setTBarPosition(pos, release: false);
     _pendingTbarPos = null;
 
-    _tbarThrottleTimer = Timer(const Duration(milliseconds: 25), () {
-      if (_pendingTbarPos != null && mounted) {
-        ref
-            .read(scenesProvider.notifier)
-            .setTBarPosition(_pendingTbarPos!, release: false);
+    // Stream subsequent updates at a steady ~30fps (33ms) cadence to avoid network packet pileup and frame drops
+    _tbarThrottleTimer = Timer.periodic(const Duration(milliseconds: 33), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      if (_pendingTbarPos != null) {
+        final toSend = _pendingTbarPos!;
         _pendingTbarPos = null;
+        ref.read(scenesProvider.notifier).setTBarPosition(toSend, release: false);
+      } else if (!_isDragging && !_animatingToCompletion) {
+        timer.cancel();
+        _tbarThrottleTimer = null;
       }
     });
   }
 
+  void _animateTo(
+    double target, {
+    Duration duration = const Duration(milliseconds: 180),
+    Curve curve = Curves.easeOutCubic,
+    VoidCallback? onDone,
+  }) {
+    _snapController.stop();
+    _snapController.duration = duration;
+    final start = _tbarPosition;
+    _snapAnimation = Tween<double>(begin: start, end: target).animate(
+      CurvedAnimation(parent: _snapController, curve: curve),
+    );
+
+    late void Function(AnimationStatus) statusListener;
+    statusListener = (AnimationStatus status) {
+      if (status == AnimationStatus.completed) {
+        _snapController.removeStatusListener(statusListener);
+        onDone?.call();
+      }
+    };
+
+    _snapController.addStatusListener(statusListener);
+    _snapController.forward(from: 0.0);
+  }
+
   void _completeTransition() {
-    if (_isCompleting || !mounted) return;
+    if (_isCompleting || _isCoolingDown || !mounted) return;
     _isCompleting = true;
     _isDragging = false;
     Haptics.heavy();
 
-    setState(() {
-      _tbarPosition = 1.0;
-    });
+    // Dynamically match cooldown delay to the configured transition duration (minimum 400ms)
+    // to prevent the user from continuing to slide the handle while scenes settle
+    final transitionDurationMs = ref.read(transitionDurationProvider);
+    final cooldownDelayMs = math.max(transitionDurationMs, 400);
 
-    _sendThrottledTBar(1.0, release: true);
+    void startCooldown() {
+      if (!mounted) return;
+      setState(() {
+        _tbarPosition = 0.0;
+        _isCompleting = false;
+        _isCoolingDown = true;
+      });
 
-    // Smoothly snap thumb back to 0.0 ready for the next transition
-    _snapAnimation = Tween<double>(begin: 1.0, end: 0.0).animate(
-      CurvedAnimation(parent: _snapController, curve: Curves.easeOutCubic),
-    );
-    _snapController.forward(from: 0.0);
+      _cooldownTimer?.cancel();
+      _cooldownTimer = Timer(Duration(milliseconds: cooldownDelayMs), () {
+        if (!mounted) return;
+        if (!_touchActive) {
+          setState(() {
+            _isCoolingDown = false;
+          });
+        }
+      });
+    }
+
+    if (_tbarPosition < 0.98) {
+      // Glide the remaining distance to 1.0, commit, then reset handle to 0 instantly
+      _animatingToCompletion = true;
+      _animateTo(
+        1.0,
+        duration: const Duration(milliseconds: 100),
+        curve: Curves.easeOutCubic,
+        onDone: () {
+          if (!mounted) return;
+          _animatingToCompletion = false;
+          _snapController.stop();
+          _sendThrottledTBar(1.0, release: true);
+          startCooldown();
+        },
+      );
+    } else {
+      _animatingToCompletion = false;
+      _snapController.stop();
+      _sendThrottledTBar(1.0, release: true);
+      startCooldown();
+    }
   }
 
   void _handleDragDelta(double deltaDx, double trackWidth) {
-    if (_isCompleting || trackWidth <= _kTbarHandleWidth) return;
+    if (_isCompleting || _isCoolingDown || trackWidth <= _kTbarHandleWidth) return;
     final maxTravel = trackWidth - _kTbarHandleWidth;
     if (maxTravel <= 0) return;
 
     final deltaPos = deltaDx / maxTravel;
     final newPos = (_tbarPosition + deltaPos).clamp(0.0, 1.0);
 
-    // Haptic detent feedback while sliding (every 5% transition increment)
-    final detent = (newPos * 20).round();
+    // Haptic detent feedback while sliding (every 10% transition increment)
+    final detent = (newPos * 10).round();
     if (detent != _lastHapticDetent) {
       _lastHapticDetent = detent;
       Haptics.selection();
@@ -175,20 +248,29 @@ class _StudioTransitionControlState
   }
 
   void _handleDragEnd() {
-    if (_isCompleting) return;
+    if (_isCompleting || _isCoolingDown) return;
     _isDragging = false;
     setState(() {});
 
-    if (_tbarPosition >= 0.95) {
+    if (_tbarPosition >= 0.88) {
       // Completed transition to Program
       _completeTransition();
-    } else if (_tbarPosition <= 0.05) {
+    } else if (_tbarPosition <= 0.12) {
       // Reverted to Preview
       Haptics.selection();
-      _sendThrottledTBar(0.0, release: true);
-      setState(() {
-        _tbarPosition = 0.0;
-      });
+      _animatingToCompletion = false;
+      _animateTo(
+        0.0,
+        duration: const Duration(milliseconds: 140),
+        curve: Curves.easeOutCubic,
+        onDone: () {
+          if (!mounted) return;
+          _sendThrottledTBar(0.0, release: true);
+          setState(() {
+            _tbarPosition = 0.0;
+          });
+        },
+      );
     } else {
       // User released in the middle: FREELY HOLD the transition at this position!
       Haptics.selection();
@@ -424,96 +506,19 @@ class _StudioTransitionControlState
         final isHeld = _tbarPosition > 0.05 && _tbarPosition < 0.95;
 
         return Container(
-                width: trackWidth,
-                padding: const EdgeInsets.symmetric(vertical: 2),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Sub-labels: PRV -> PGM (Interactive Taps)
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onTap: () {
-                            if (!_isCompleting) {
-                              Haptics.selection();
-                              _snapController.stop();
-                              _sendThrottledTBar(0.0, release: true);
-                              setState(() => _tbarPosition = 0.0);
-                            }
-                          },
-                          child: Padding(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: isHorizontal ? 4 : 2,
-                              vertical: isHorizontal ? 2 : 1,
-                            ),
-                            child: Text(
-                              'PRV',
-                              style: TextStyle(
-                                fontSize: isHorizontal ? 9.5 : 8.0,
-                                fontWeight: FontWeight.w900,
-                                height: 1.0,
-                                color: _tbarPosition > 0.1
-                                    ? AppColors.textMuted
-                                    : AppColors.previewAmber,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                          ),
-                        ),
-                        if (isHeld)
-                          Text(
-                            '${(_tbarPosition * 100).round()}%',
-                            style: TextStyle(
-                              fontSize: isHorizontal ? 9.0 : 7.5,
-                              fontWeight: FontWeight.w900,
-                              fontFamily: 'monospace',
-                              color: AppColors.previewAmber,
-                            ),
-                          ),
-                        GestureDetector(
-                          behavior: HitTestBehavior.opaque,
-                          onTap: () {
-                            if (!_isCompleting) {
-                              _completeTransition();
-                            }
-                          },
-                          child: Padding(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: isHorizontal ? 4 : 2,
-                              vertical: isHorizontal ? 2 : 1,
-                            ),
-                            child: Text(
-                              'PGM',
-                              style: TextStyle(
-                                fontSize: isHorizontal ? 9.5 : 8.0,
-                                fontWeight: FontWeight.w900,
-                                height: 1.0,
-                                color: _tbarPosition > 0.85
-                                    ? AppColors.liveRed
-                                    : AppColors.textMuted,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 3),
-
-                    // T-Bar Track Container (Static rail, handle-only interaction)
-                    Container(
-                      key: const Key('tbar_slider_track'),
-                      height: _kTbarTrackHeight,
-                      width: trackWidth,
-                      alignment: Alignment.centerLeft,
-                      child: Stack(
-                        alignment: Alignment.centerLeft,
-                        clipBehavior: Clip.none,
-                        children: [
-                          // ── Unchanged Rail Slot / Groove ───────────────
-                          Center(
+          width: trackWidth,
+          padding: const EdgeInsets.symmetric(vertical: 3),
+          child: Container(
+            key: const Key('tbar_slider_track'),
+            height: _kTbarTrackHeight,
+            width: trackWidth,
+            alignment: Alignment.centerLeft,
+            child: Stack(
+              alignment: Alignment.centerLeft,
+              clipBehavior: Clip.none,
+              children: [
+                // ── Rail Slot / Groove ───────────────
+                Center(
                             child: Container(
                               height: 6,
                               width: trackWidth,
@@ -558,169 +563,207 @@ class _StudioTransitionControlState
                               key: const Key('tbar_slider_handle'),
                               behavior: HitTestBehavior.opaque,
                               onHorizontalDragStart: (_) {
-                                if (_isCompleting) return;
+                                if (_isCompleting || _isCoolingDown) return;
+                                _touchActive = true;
                                 _snapController.stop();
                                 _isDragging = true;
-                                _lastHapticDetent = (_tbarPosition * 20)
-                                    .round();
+                                _lastHapticDetent = (_tbarPosition * 20).round();
                                 Haptics.selection();
                                 setState(() {});
                               },
                               onHorizontalDragUpdate: (details) {
+                                if (_isCompleting || _isCoolingDown) return;
                                 _handleDragDelta(details.delta.dx, trackWidth);
                               },
-                              onHorizontalDragEnd: (_) => _handleDragEnd(),
-                              onHorizontalDragCancel: () => _handleDragEnd(),
-                              child: Center(
-                                child: Container(
-                                  width: _kTbarHandleWidth,
-                                  height: _kTbarHandleHeight,
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      begin: Alignment.topCenter,
-                                      end: Alignment.bottomCenter,
-                                      colors: _isDragging
-                                          ? const [
-                                              Color(0xFF3E475A),
-                                              Color(0xFF242A36),
-                                              Color(0xFF181C24),
-                                            ]
-                                          : (isHeld
+                              onHorizontalDragEnd: (_) {
+                                _touchActive = false;
+                                if (_isCompleting) return;
+                                if (_isCoolingDown) {
+                                  if (_cooldownTimer == null || !_cooldownTimer!.isActive) {
+                                    setState(() {
+                                      _isCoolingDown = false;
+                                    });
+                                  }
+                                  return;
+                                }
+                                _handleDragEnd();
+                              },
+                              onHorizontalDragCancel: () {
+                                _touchActive = false;
+                                if (_isCompleting) return;
+                                if (_isCoolingDown) {
+                                  if (_cooldownTimer == null || !_cooldownTimer!.isActive) {
+                                    setState(() {
+                                      _isCoolingDown = false;
+                                    });
+                                  }
+                                  return;
+                                }
+                                _handleDragEnd();
+                              },
+                              child: AnimatedOpacity(
+                                duration: const Duration(milliseconds: 150),
+                                opacity: _isCoolingDown ? 0.6 : 1.0,
+                                child: Center(
+                                  child: Container(
+                                    width: _kTbarHandleWidth,
+                                    height: _kTbarHandleHeight,
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        begin: Alignment.topCenter,
+                                        end: Alignment.bottomCenter,
+                                        colors: _isCoolingDown
+                                            ? const [
+                                                Color(0xFF222630),
+                                                Color(0xFF161920),
+                                                Color(0xFF0F1116),
+                                              ]
+                                            : _isDragging
                                                 ? const [
-                                                    Color(0xFF363E4E),
-                                                    Color(0xFF202530),
-                                                    Color(0xFF161920),
+                                                    Color(0xFF3E475A),
+                                                    Color(0xFF242A36),
+                                                    Color(0xFF181C24),
                                                   ]
-                                                : const [
-                                                    Color(0xFF2E3442),
-                                                    Color(0xFF1C2028),
-                                                    Color(0xFF13161C),
-                                                  ]),
-                                    ),
-                                    borderRadius: BorderRadius.circular(5),
-                                    border: Border.all(
-                                      color: _isDragging
-                                          ? AppColors.accentCyan
-                                          : (isHeld
-                                                ? AppColors.previewAmber
-                                                : const Color(0xFF5A6478)),
-                                      width: 1.4,
-                                    ),
-                                    boxShadow: [
-                                      // Deep 3D drop shadow lifting handle off the rail
-                                      BoxShadow(
-                                        color: Colors.black.withValues(
-                                          alpha: 0.7,
-                                        ),
-                                        blurRadius: 7,
-                                        spreadRadius: 1,
-                                        offset: const Offset(0, 3),
+                                                : (isHeld
+                                                    ? const [
+                                                        Color(0xFF363E4E),
+                                                        Color(0xFF202530),
+                                                        Color(0xFF161920),
+                                                      ]
+                                                    : const [
+                                                        Color(0xFF2E3442),
+                                                        Color(0xFF1C2028),
+                                                        Color(0xFF13161C),
+                                                      ]),
                                       ),
-                                      if (isHeld)
-                                        BoxShadow(
-                                          color: AppColors.previewAmber
-                                              .withValues(alpha: 0.4),
-                                          blurRadius: 8,
-                                          spreadRadius: 1,
-                                        )
-                                      else if (_isDragging)
-                                        BoxShadow(
-                                          color: AppColors.accentCyan
-                                              .withValues(alpha: 0.4),
-                                          blurRadius: 8,
-                                          spreadRadius: 1,
-                                        ),
-                                    ],
-                                  ),
-                                  child: Stack(
-                                    alignment: Alignment.center,
-                                    children: [
-                                      // Top bevel specular highlight
-                                      Positioned(
-                                        top: 1.5,
-                                        left: 3,
-                                        right: 3,
-                                        child: Container(
-                                          height: 1.2,
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFF6E7A94),
-                                            borderRadius: BorderRadius.circular(
-                                              1,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      // Top knurl notch (T-Bar head grip)
-                                      Positioned(
-                                        top: 6,
-                                        child: Container(
-                                          width: 14,
-                                          height: 1.2,
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFF434C60),
-                                            borderRadius: BorderRadius.circular(
-                                              1,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      // Left tactile knurl rib
-                                      Positioned(
-                                        left: 6.5,
-                                        top: 12,
-                                        bottom: 12,
-                                        child: Container(
-                                          width: 1.5,
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFF475064),
-                                            borderRadius: BorderRadius.circular(
-                                              1,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      // Center illuminated status tally needle
-                                      Center(
-                                        child: Container(
-                                          width: 2.2,
-                                          height: 10,
-                                          decoration: BoxDecoration(
-                                            color: _isDragging
+                                      borderRadius: BorderRadius.circular(5),
+                                      border: Border.all(
+                                        color: _isCoolingDown
+                                            ? const Color(0xFF3A4252)
+                                            : _isDragging
                                                 ? AppColors.accentCyan
                                                 : (isHeld
-                                                      ? AppColors.previewAmber
-                                                      : const Color(
-                                                          0xFFE2E8F0,
-                                                        )),
-                                            borderRadius: BorderRadius.circular(
-                                              1,
+                                                    ? AppColors.previewAmber
+                                                    : const Color(0xFF5A6478)),
+                                        width: 1.4,
+                                      ),
+                                      boxShadow: [
+                                        // Deep 3D drop shadow lifting handle off the rail
+                                        BoxShadow(
+                                          color: Colors.black.withValues(
+                                            alpha: 0.7,
+                                          ),
+                                          blurRadius: 7,
+                                          spreadRadius: 1,
+                                          offset: const Offset(0, 3),
+                                        ),
+                                        if (!_isCoolingDown && isHeld)
+                                          BoxShadow(
+                                            color: AppColors.previewAmber
+                                                .withValues(alpha: 0.4),
+                                            blurRadius: 8,
+                                            spreadRadius: 1,
+                                          )
+                                        else if (!_isCoolingDown && _isDragging)
+                                          BoxShadow(
+                                            color: AppColors.accentCyan
+                                                .withValues(alpha: 0.4),
+                                            blurRadius: 8,
+                                            spreadRadius: 1,
+                                          ),
+                                      ],
+                                    ),
+                                    child: Stack(
+                                      alignment: Alignment.center,
+                                      children: [
+                                        // Top bevel specular highlight
+                                        Positioned(
+                                          top: 1.5,
+                                          left: 3,
+                                          right: 3,
+                                          child: Container(
+                                            height: 1.2,
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFF6E7A94),
+                                              borderRadius: BorderRadius.circular(
+                                                1,
+                                              ),
                                             ),
-                                            boxShadow: (_isDragging || isHeld)
-                                                ? [
-                                                    BoxShadow(
-                                                      color:
-                                                          (_isDragging
-                                                                  ? AppColors
-                                                                        .accentCyan
-                                                                  : AppColors
-                                                                        .previewAmber)
-                                                              .withValues(
-                                                                alpha: 0.8,
-                                                              ),
-                                                      blurRadius: 5,
-                                                    ),
-                                                  ]
-                                                : null,
                                           ),
                                         ),
-                                      ),
-                                      // Right tactile knurl rib
-                                      Positioned(
-                                        right: 6.5,
-                                        top: 12,
-                                        bottom: 12,
-                                        child: Container(
-                                          width: 1.5,
+                                        // Top knurl notch (T-Bar head grip)
+                                        Positioned(
+                                          top: 6,
+                                          child: Container(
+                                            width: 14,
+                                            height: 1.2,
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFF434C60),
+                                              borderRadius: BorderRadius.circular(
+                                                1,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        // Left tactile knurl rib
+                                        Positioned(
+                                          left: 6.5,
+                                          top: 12,
+                                          bottom: 12,
+                                          child: Container(
+                                            width: 1.5,
+                                            decoration: BoxDecoration(
+                                              color: const Color(0xFF475064),
+                                              borderRadius: BorderRadius.circular(
+                                                1,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                        // Center illuminated status tally needle
+                                        Center(
+                                          child: Container(
+                                            width: 2.2,
+                                            height: 10,
+                                            decoration: BoxDecoration(
+                                              color: _isCoolingDown
+                                                  ? const Color(0xFF4A5568)
+                                                  : _isDragging
+                                                      ? AppColors.accentCyan
+                                                      : (isHeld
+                                                          ? AppColors.previewAmber
+                                                          : const Color(
+                                                              0xFFE2E8F0,
+                                                            )),
+                                              borderRadius: BorderRadius.circular(
+                                                1,
+                                              ),
+                                              boxShadow: (!_isCoolingDown &&
+                                                      (_isDragging || isHeld))
+                                                  ? [
+                                                      BoxShadow(
+                                                        color: (_isDragging
+                                                                ? AppColors
+                                                                    .accentCyan
+                                                                : AppColors
+                                                                    .previewAmber)
+                                                            .withValues(
+                                                          alpha: 0.8,
+                                                        ),
+                                                        blurRadius: 5,
+                                                      ),
+                                                    ]
+                                                  : null,
+                                            ),
+                                          ),
+                                        ),
+                                        // Right tactile knurl rib
+                                        Positioned(
+                                          right: 6.5,
+                                          top: 12,
+                                          bottom: 12,
+                                          child: Container(
+                                            width: 1.5,
                                           decoration: BoxDecoration(
                                             color: const Color(0xFF475064),
                                             borderRadius: BorderRadius.circular(
@@ -764,12 +807,11 @@ class _StudioTransitionControlState
                               ),
                             ),
                           ),
-                        ],
+                        ),
+                      ],
                       ),
                     ),
-                  ],
-                ),
-              );
+                  );
       },
     );
   }

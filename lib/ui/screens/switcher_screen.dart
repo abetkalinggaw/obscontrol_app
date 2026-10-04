@@ -353,50 +353,57 @@ class SwitcherScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildStudioToggleButton(WidgetRef ref, bool studioModeEnabled) {
-    return InkWell(
-      onTap: () {
-        Haptics.selection();
-        ref.read(obsProvider.notifier).toggleStudioMode();
-      },
-      borderRadius: BorderRadius.circular(5),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-        decoration: BoxDecoration(
-          color: studioModeEnabled
-              ? AppColors.accentCyan
-              : AppColors.surfaceElevated,
-          borderRadius: BorderRadius.circular(5),
-          border: Border.all(
+  Widget _buildStudioToggleButton(WidgetRef ref, bool studioModeEnabled, {bool showLabel = false}) {
+    return Tooltip(
+      message: studioModeEnabled
+          ? 'Studio Mode Enabled (tap to disable)'
+          : 'Studio Mode Disabled (tap to enable)',
+      child: InkWell(
+        onTap: () {
+          Haptics.selection();
+          ref.read(obsProvider.notifier).toggleStudioMode();
+        },
+        borderRadius: BorderRadius.circular(5),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+          decoration: BoxDecoration(
             color: studioModeEnabled
                 ? AppColors.accentCyan
-                : AppColors.surfaceBorder,
-            width: 1.0,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.splitscreen_rounded,
-              size: 11,
+                : AppColors.surfaceElevated,
+            borderRadius: BorderRadius.circular(5),
+            border: Border.all(
               color: studioModeEnabled
-                  ? const Color(0xFF090A0E)
-                  : AppColors.textMuted,
+                  ? AppColors.accentCyan
+                  : AppColors.surfaceBorder,
+              width: 1.0,
             ),
-            const SizedBox(width: 4),
-            Text(
-              'STUDIO',
-              style: TextStyle(
-                fontSize: 8.5,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 0.6,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.splitscreen_rounded,
+                size: 11,
                 color: studioModeEnabled
-                  ? const Color(0xFF090A0E)
-                  : AppColors.textMuted,
+                    ? const Color(0xFF090A0E)
+                    : AppColors.textMuted,
               ),
-            ),
-          ],
+              if (showLabel) ...[
+                const SizedBox(width: 4),
+                Text(
+                  'STUDIO',
+                  style: TextStyle(
+                    fontSize: 8.5,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.6,
+                    color: studioModeEnabled
+                        ? const Color(0xFF090A0E)
+                        : AppColors.textMuted,
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );

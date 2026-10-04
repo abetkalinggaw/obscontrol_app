@@ -58,10 +58,14 @@ class ObsNotifier extends Notifier<ObsConnectionState> {
   ObsConnectionState build() {
     final obsService = ref.watch(obsWebSocketServiceProvider);
     final vmixService = ref.watch(vmixHttpServiceProvider);
-    final settings = ref.watch(settingsProvider);
+    final settings = ref.read(settingsProvider);
 
     obsService.autoReconnect = settings.autoReconnect;
     vmixService.autoReconnect = settings.autoReconnect;
+    ref.listen(settingsProvider.select((s) => s.autoReconnect), (_, next) {
+      obsService.autoReconnect = next;
+      vmixService.autoReconnect = next;
+    });
 
     obsService.onStatusChanged = (status, error) {
       if (state.currentSoftware != StreamingSoftware.vmix) {

@@ -67,9 +67,14 @@ void main() {
     // Verify initial duration chip displays 300ms
     expect(find.text('300ms'), findsOneWidget);
 
-    // Verify T-Bar labels exist
-    expect(find.text('PRV'), findsOneWidget);
-    expect(find.text('PGM'), findsOneWidget);
+    // Verify PRV, PGM, and percentage readout are removed from T-Bar
+    expect(find.text('PRV'), findsNothing);
+    expect(find.text('PGM'), findsNothing);
+    expect(find.textContaining('%'), findsNothing);
+
+    // Verify T-Bar track and handle exist
+    expect(find.byKey(const Key('tbar_slider_track')), findsOneWidget);
+    expect(find.byKey(const Key('tbar_slider_handle')), findsOneWidget);
   });
 
   testWidgets('Tapping duration chip opens modal and allows selecting presets', (tester) async {
@@ -283,31 +288,34 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // Initial state: PRV visible, no percentage readout
-    expect(find.text('PRV'), findsOneWidget);
-    expect(find.text('PGM'), findsOneWidget);
-    expect(find.text('50%'), findsNothing);
+    // Verify PRV, PGM, and % labels are absent
+    expect(find.text('PRV'), findsNothing);
+    expect(find.text('PGM'), findsNothing);
+    expect(find.textContaining('%'), findsNothing);
 
-    // Find the T-Bar track gesture detector
+    // Find the T-Bar track and handle
     final trackFinder = find.byKey(const Key('tbar_slider_track'));
+    final handleFinder = find.byKey(const Key('tbar_slider_handle'));
     expect(trackFinder, findsOneWidget);
+    expect(handleFinder, findsOneWidget);
 
     final trackRect = tester.getRect(trackFinder);
+    final initialHandleRect = tester.getRect(handleFinder);
+    expect(initialHandleRect.left, closeTo(trackRect.left, 2.0));
 
-    // Drag to middle (50% position)
-    final gesture = await tester.startGesture(trackRect.centerLeft + const Offset(10, 0));
+    // Drag handle to middle (~50% position)
+    final gesture = await tester.startGesture(tester.getCenter(handleFinder));
     await tester.pump();
     await gesture.moveTo(trackRect.center);
     await tester.pump();
     await gesture.up();
     await tester.pumpAndSettle();
 
-    // Verify it holds at ~50% and displays the percentage readout!
-    expect(find.textContaining('%'), findsOneWidget);
+    // Verify handle holds at ~50% position
+    final midHandleRect = tester.getRect(handleFinder);
+    expect(midHandleRect.center.dx, closeTo(trackRect.center.dx, 5.0));
 
-    // Tap PRV label: resets back to 0.0
-    await tester.tap(find.text('PRV'));
-    await tester.pumpAndSettle();
+    // Still no percentage text displayed
     expect(find.textContaining('%'), findsNothing);
   });
 
@@ -334,21 +342,24 @@ void main() {
     await tester.pumpAndSettle();
 
     final trackFinder = find.byKey(const Key('tbar_slider_track'));
+    final handleFinder = find.byKey(const Key('tbar_slider_handle'));
     final trackRect = tester.getRect(trackFinder);
 
-    // Drag all the way to the right (100% Program position)
-    final gesture = await tester.startGesture(trackRect.centerLeft + const Offset(5, 0));
+    // Drag handle all the way to the right (100% Program position)
+    final gesture = await tester.startGesture(tester.getCenter(handleFinder));
     await tester.pump();
     await gesture.moveTo(trackRect.centerRight - const Offset(2, 0));
     await tester.pump();
     await gesture.up();
     await tester.pumpAndSettle();
 
-    // Verify it completed transition and returned handle to 0 (no held % readout)
+    // Verify it completed transition and returned handle to 0
+    final resetHandleRect = tester.getRect(handleFinder);
+    expect(resetHandleRect.left, closeTo(trackRect.left, 2.0));
     expect(find.textContaining('%'), findsNothing);
   });
 
-  testWidgets('T-Bar completes transition when tapping PGM', (tester) async {
+  testWidgets('T-Bar smoothly glides to complete transition when released near Program end', (tester) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -370,12 +381,21 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    // Tap PGM label
-    await tester.tap(find.text('PGM'));
+    final trackFinder = find.byKey(const Key('tbar_slider_track'));
+    final handleFinder = find.byKey(const Key('tbar_slider_handle'));
+    final trackRect = tester.getRect(trackFinder);
+
+    // Drag handle to ~90% (near end) and release
+    final gesture = await tester.startGesture(tester.getCenter(handleFinder));
+    await tester.pump();
+    await gesture.moveTo(trackRect.centerRight - const Offset(8, 0));
+    await tester.pump();
+    await gesture.up();
     await tester.pumpAndSettle();
 
-    // Handle completes and returns to 0
-    expect(find.textContaining('%'), findsNothing);
+    // Handle completes and smoothly returns to 0
+    final finalHandleRect = tester.getRect(handleFinder);
+    expect(finalHandleRect.left, closeTo(trackRect.left, 2.0));
   });
 
   testWidgets('T-Bar slider rail is non-interactive and only handle can be grabbed', (tester) async {
@@ -402,13 +422,16 @@ void main() {
 
     final trackFinder = find.byKey(const Key('tbar_slider_track'));
     final trackRect = tester.getRect(trackFinder);
+    final handleFinder = find.byKey(const Key('tbar_slider_handle'));
+
+    final initialHandleRect = tester.getRect(handleFinder);
 
     // 1. Touch/tap on the rail at 70% of the track (far from the handle at 0%)
     await tester.tapAt(trackRect.centerLeft + const Offset(70, 0));
     await tester.pumpAndSettle();
 
-    // Verify rail tap was ignored (handle did not jump to 70%, no percentage readout)
-    expect(find.textContaining('%'), findsNothing);
+    // Verify rail tap was ignored (handle stayed at initial position)
+    expect(tester.getRect(handleFinder).left, closeTo(initialHandleRect.left, 1.0));
 
     // 2. Drag on the rail starting at 70%
     final railDrag = await tester.startGesture(trackRect.centerLeft + const Offset(70, 0));
@@ -418,13 +441,10 @@ void main() {
     await railDrag.up();
     await tester.pumpAndSettle();
 
-    // Verify rail drag was ignored
-    expect(find.textContaining('%'), findsNothing);
+    // Verify rail drag was ignored (handle stayed at initial position)
+    expect(tester.getRect(handleFinder).left, closeTo(initialHandleRect.left, 1.0));
 
     // 3. Now grab the handle directly using its key
-    final handleFinder = find.byKey(const Key('tbar_slider_handle'));
-    expect(handleFinder, findsOneWidget);
-
     final handleDrag = await tester.startGesture(tester.getCenter(handleFinder));
     await tester.pump();
     await handleDrag.moveBy(const Offset(40, 0));
@@ -433,7 +453,76 @@ void main() {
     await tester.pumpAndSettle();
 
     // Verify the handle was dragged and is holding transition
-    expect(find.textContaining('%'), findsOneWidget);
+    expect(tester.getRect(handleFinder).left, greaterThan(initialHandleRect.left + 20));
+  });
+
+  testWidgets('T-Bar enforces cooldown delay after transition, locking handle until cooldown expires', (tester) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          storageServiceProvider.overrideWithValue(storage),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.darkTheme,
+          home: Scaffold(
+            body: Center(
+              child: StudioTransitionControl(
+                width: 100,
+                onCut: () {},
+                onFade: () {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final trackFinder = find.byKey(const Key('tbar_slider_track'));
+    final handleFinder = find.byKey(const Key('tbar_slider_handle'));
+    final trackRect = tester.getRect(trackFinder);
+
+    // 1. Drag handle to completion (100%) and release
+    final gesture = await tester.startGesture(tester.getCenter(handleFinder));
+    await tester.pump();
+    await gesture.moveTo(trackRect.centerRight - const Offset(2, 0));
+    await tester.pump();
+    await gesture.up();
+
+    // Pump through the 180ms return animation
+    await tester.pump(const Duration(milliseconds: 60));
+    await tester.pump(const Duration(milliseconds: 60));
+    await tester.pump(const Duration(milliseconds: 80));
+    await tester.pump(const Duration(milliseconds: 60));
+
+    // Handle is back at 0.0, but within the cooldown period (400ms delay)
+    final initialResetRect = tester.getRect(handleFinder);
+    expect(initialResetRect.left, closeTo(trackRect.left, 2.0));
+
+    // 2. Attempt to immediately drag handle while in cooldown (100ms into cooldown)
+    await tester.pump(const Duration(milliseconds: 100));
+    final lockedGesture = await tester.startGesture(tester.getCenter(handleFinder));
+    await tester.pump();
+    await lockedGesture.moveBy(const Offset(40, 0));
+    await tester.pump();
+    await lockedGesture.up();
+
+    // Verify handle was NOT moved because cooldown is active
+    expect(tester.getRect(handleFinder).left, closeTo(initialResetRect.left, 2.0));
+
+    // 3. Advance past the full cooldown duration
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.pumpAndSettle();
+
+    // 4. Now drag the handle again after cooldown has elapsed
+    final newGesture = await tester.startGesture(tester.getCenter(handleFinder));
+    await tester.pump();
+    await newGesture.moveBy(const Offset(35, 0));
+    await tester.pump();
+    await newGesture.up();
+    await tester.pumpAndSettle();
+
+    // Handle successfully dragged after cooldown
+    expect(tester.getRect(handleFinder).left, greaterThan(initialResetRect.left + 15));
   });
 }
-

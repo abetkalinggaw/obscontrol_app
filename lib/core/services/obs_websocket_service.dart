@@ -850,19 +850,79 @@ class ObsWebSocketService implements BroadcastService {
     }
   }
 
+  Future<void>? _tbarPrepare;
+
+  /// OBS rejects T-Bar input when the current transition is fixed (e.g. "Cut"),
+  /// which is what the Cut button leaves selected. Switch to Fade in that case.
+  Future<void> _ensureTBarCompatibleTransition() async {
+    try {
+      final res = await sendRequest('GetCurrentSceneTransition');
+      final data = res['responseData'] as Map<String, dynamic>? ?? res;
+      final fixed = data['transitionFixed'] as bool? ?? false;
+      final name = data['transitionName'] as String? ?? '';
+      if (fixed || name == 'Cut') {
+        await sendRequest('SetCurrentSceneTransition', {'transitionName': 'Fade'});
+      }
+    } catch (e) {
+      debugPrint('Error preparing T-Bar transition: $e');
+    }
+  }
+
   @override
   Future<void> setTBarPosition(double position, {bool release = true}) async {
     if (_status != ObsConnectionStatus.connected) return;
     try {
-      final clamped = position.clamp(0.0, 1.0);
+      var clamped = position.clamp(0.0, 1.0).toDouble();
+      // OBS only commits a manual transition when released at exactly 100%.
+      if (release && clamped >= 0.95) clamped = 1.0;
+
+      if (clamped > 0.0) {
+        _tbarPrepare ??= _ensureTBarCompatibleTransition();
+        await _tbarPrepare;
+      }
+
+      if (release && clamped >= 1.0) {
+        // Commit deterministically instead of relying on OBS's T-Bar release
+        // semantics (unreliable over websocket). The visual fade was already
+        // driven by the slider; finish it with an instant cut Preview → Program.
+        String? previewScene;
+        try {
+          final p = await sendRequest('GetCurrentPreviewScene');
+          previewScene = (p['responseData'] as Map<String, dynamic>? ?? p)['currentPreviewSceneName'] as String?;
+        } catch (_) {}
+
+        // Cancel the in-progress manual transition so OBS accepts a new one.
+        await sendRequest('SetTBarPosition', {'position': 0.0, 'release': true});
+        _tbarPrepare = null;
+
+        String? previousTransition;
+        try {
+          final t = await sendRequest('GetCurrentSceneTransition');
+          previousTransition = (t['responseData'] as Map<String, dynamic>? ?? t)['transitionName'] as String?;
+        } catch (_) {}
+
+        await sendRequest('SetCurrentSceneTransition', {'transitionName': 'Cut'});
+        final res = await sendRequest('TriggerStudioModeTransition');
+        final ok = (res['requestStatus'] as Map<String, dynamic>?)?['result'] as bool? ?? true;
+        if (!ok && previewScene != null) {
+          await sendRequest('SetCurrentProgramScene', {'sceneName': previewScene});
+        }
+
+        if (previousTransition != null && previousTransition != 'Cut') {
+          await sendRequest('SetCurrentSceneTransition', {'transitionName': previousTransition});
+        }
+
+        _fetchRealtimeMultiviewPreviews(immediate: true);
+        return;
+      }
+
       await sendRequest('SetTBarPosition', {
         'position': clamped,
         'release': release,
       });
-      if (release && clamped >= 0.95) {
-        // Guarantee OBS completes the Studio Mode transition and swaps preview/program
-        await sendRequest('TriggerStudioModeTransition');
-        _fetchRealtimeMultiviewPreviews(immediate: true);
+
+      if (release) {
+        _tbarPrepare = null;
       }
     } catch (e) {
       debugPrint('Error setting T-Bar position: $e');

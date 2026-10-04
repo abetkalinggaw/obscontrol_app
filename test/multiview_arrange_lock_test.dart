@@ -119,8 +119,14 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Lock button should be visible (initially unlocked)
+      // Studio Mode button in portrait should be icon only without text 'STUDIO'
+      expect(find.byIcon(Icons.splitscreen_rounded), findsOneWidget);
+      expect(find.text('STUDIO'), findsNothing);
+
+      // Lock button should be visible (initially unlocked and icon only)
       expect(find.byIcon(Icons.lock_open_rounded), findsOneWidget);
+      expect(find.text('LOCK'), findsNothing);
+      expect(find.text('ARRANGE'), findsNothing);
       expect(container.read(scenesProvider).isLocked, isFalse);
 
       // Tap lock button to lock multiview

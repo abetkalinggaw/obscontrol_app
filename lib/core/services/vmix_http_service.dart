@@ -298,8 +298,7 @@ class VmixHttpService implements BroadcastService {
     final faderVal = (position.clamp(0.0, 1.0) * 255).round();
     await _sendFunction('SetFader', {'Value': faderVal.toString()});
     if (release && position >= 0.95) {
-      await _sendFunction('Fade', {'Duration': '100'});
-      await _sendFunction('SetFader', {'Value': '0'});
+      await _sendFunction('Transition', {});
     }
   }
 

@@ -10,14 +10,33 @@ import '../screens/barcode_scanner_screen.dart';
 import 'connection_guide_dialog.dart';
 
 class QuickConnectSheet extends ConsumerStatefulWidget {
-  const QuickConnectSheet({super.key});
+  final Future<List<DiscoveredObsServer>> Function({
+    StreamingSoftware? software,
+    int? customPort,
+    String? preferredHost,
+    void Function(double progress, String status)? onProgress,
+    void Function(DiscoveredObsServer server)? onDiscovered,
+    bool Function()? isCancelled,
+  })? discoveryScanner;
 
-  static Future<void> show(BuildContext context) {
+  const QuickConnectSheet({super.key, this.discoveryScanner});
+
+  static Future<void> show(
+    BuildContext context, {
+    Future<List<DiscoveredObsServer>> Function({
+      StreamingSoftware? software,
+      int? customPort,
+      String? preferredHost,
+      void Function(double progress, String status)? onProgress,
+      void Function(DiscoveredObsServer server)? onDiscovered,
+      bool Function()? isCancelled,
+    })? discoveryScanner,
+  }) {
     return showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => const QuickConnectSheet(),
+      builder: (_) => QuickConnectSheet(discoveryScanner: discoveryScanner),
     );
   }
 
@@ -26,11 +45,13 @@ class QuickConnectSheet extends ConsumerStatefulWidget {
 }
 
 class _QuickConnectSheetState extends ConsumerState<QuickConnectSheet> {
+  final ScrollController _scrollController = ScrollController();
   late TextEditingController _hostController;
   late TextEditingController _portController;
   late TextEditingController _passwordController;
   bool _obscurePassword = true;
   bool _isScanning = false;
+  bool _cancelScan = false;
   double _scanProgress = 0.0;
   String _scanStatusText = '';
   List<DiscoveredObsServer> _discoveredServers = [];
@@ -49,6 +70,8 @@ class _QuickConnectSheetState extends ConsumerState<QuickConnectSheet> {
 
   @override
   void dispose() {
+    _cancelScan = true;
+    _scrollController.dispose();
     _hostController.dispose();
     _portController.dispose();
     _passwordController.dispose();
@@ -70,24 +93,39 @@ class _QuickConnectSheetState extends ConsumerState<QuickConnectSheet> {
   Future<void> _startLanScan() async {
     setState(() {
       _isScanning = true;
+      _cancelScan = false;
       _scanProgress = 0.0;
       _scanStatusText = 'Starting local network scan...';
       _discoveredServers.clear();
     });
 
+    final scanner = widget.discoveryScanner ?? DiscoveryService.scanLocalNetwork;
     try {
-      final results = await DiscoveryService.scanLocalNetwork(
+      final results = await scanner(
+        software: _selectedSoftware,
+        customPort: int.tryParse(_portController.text.trim()),
+        preferredHost: _hostController.text.trim().isNotEmpty ? _hostController.text.trim() : null,
+        isCancelled: () => !mounted || _cancelScan,
         onProgress: (p, status) {
-          if (mounted) {
+          if (mounted && !_cancelScan) {
             setState(() {
               _scanProgress = p;
               _scanStatusText = status;
             });
           }
         },
+        onDiscovered: (server) {
+          if (mounted && !_cancelScan) {
+            setState(() {
+              if (!_discoveredServers.any((s) => s.ip == server.ip && s.port == server.port)) {
+                _discoveredServers.add(server);
+              }
+            });
+          }
+        },
       );
 
-      if (mounted) {
+      if (mounted && !_cancelScan) {
         setState(() {
           _isScanning = false;
           _discoveredServers = results;
@@ -99,13 +137,50 @@ class _QuickConnectSheetState extends ConsumerState<QuickConnectSheet> {
         });
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted && !_cancelScan) {
         setState(() {
           _isScanning = false;
           _scanStatusText = 'Scan error: $e';
         });
       }
     }
+  }
+
+  void _stopLanScan() {
+    if (_isScanning) {
+      setState(() {
+        _cancelScan = true;
+        _isScanning = false;
+        _scanStatusText = 'Scan stopped.';
+      });
+    }
+  }
+
+  void _inputDiscoveredServer(DiscoveredObsServer server) {
+    Haptics.selection();
+    setState(() {
+      _hostController.text = server.ip;
+      _portController.text = server.port.toString();
+      _selectedSoftware = server.software;
+    });
+
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0.0,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+      );
+    }
+
+    ScaffoldMessenger.of(context).removeCurrentSnackBar();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Inputted ${server.ip}:${server.port} into Quick Connect'),
+        duration: const Duration(seconds: 2),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: AppColors.surfaceElevated,
+      ),
+    );
   }
 
   void _connect(String host, int port, String password) {
@@ -142,6 +217,7 @@ class _QuickConnectSheetState extends ConsumerState<QuickConnectSheet> {
         ),
       ),
       child: SingleChildScrollView(
+        controller: _scrollController,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
@@ -417,20 +493,24 @@ class _QuickConnectSheetState extends ConsumerState<QuickConnectSheet> {
                     color: AppColors.textSecondary,
                   ),
                 ),
-                TextButton.icon(
-                  onPressed: _isScanning ? null : _startLanScan,
-                  icon: _isScanning
-                      ? const SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.accentCyan),
-                        )
-                      : const Icon(Icons.radar_rounded, size: 16, color: AppColors.accentCyan),
-                  label: Text(
-                    _isScanning ? 'Scanning...' : 'Scan LAN',
-                    style: const TextStyle(fontSize: 12, color: AppColors.accentCyan, fontWeight: FontWeight.w700),
+                if (_isScanning)
+                  TextButton.icon(
+                    onPressed: _stopLanScan,
+                    icon: const Icon(Icons.stop_circle_outlined, size: 16, color: AppColors.liveRed),
+                    label: const Text(
+                      'Stop Scan',
+                      style: TextStyle(fontSize: 12, color: AppColors.liveRed, fontWeight: FontWeight.w700),
+                    ),
+                  )
+                else
+                  TextButton.icon(
+                    onPressed: _startLanScan,
+                    icon: const Icon(Icons.radar_rounded, size: 16, color: AppColors.accentCyan),
+                    label: const Text(
+                      'Scan LAN',
+                      style: TextStyle(fontSize: 12, color: AppColors.accentCyan, fontWeight: FontWeight.w700),
+                    ),
                   ),
-                ),
               ],
             ),
 
@@ -442,43 +522,95 @@ class _QuickConnectSheetState extends ConsumerState<QuickConnectSheet> {
                 _scanStatusText,
                 style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
               ),
-            ] else if (_discoveredServers.isNotEmpty) ...[
+            ] else if (_scanStatusText.isNotEmpty && _discoveredServers.isEmpty) ...[
+              const SizedBox(height: 6),
+              Text(
+                _scanStatusText,
+                style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+              ),
+            ],
+
+            if (_discoveredServers.isNotEmpty) ...[
               const SizedBox(height: 8),
               ..._discoveredServers.map((server) {
                 return Container(
                   margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
+                  child: Material(
                     color: AppColors.surfaceElevated,
-                    borderRadius: BorderRadius.circular(5),
-                    border: Border.all(color: AppColors.surfaceBorder, width: 1.0),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(server.name, style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.white)),
-                          Text('${server.ip}:${server.port}', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                        ],
-                      ),
-                      FilledButton(
-                        onPressed: () {
-                          _hostController.text = server.ip;
-                          _portController.text = server.port.toString();
-                          _connect(server.ip, server.port, _passwordController.text);
-                        },
-                        style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.connectedGreen,
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(5),
-                          ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(5),
+                      side: const BorderSide(color: AppColors.surfaceBorder, width: 1.0),
+                    ),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(5),
+                      onTap: () => _inputDiscoveredServer(server),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                                        margin: const EdgeInsets.only(right: 6),
+                                        decoration: BoxDecoration(
+                                          color: AppColors.surface,
+                                          borderRadius: BorderRadius.circular(2),
+                                          border: Border.all(color: AppColors.surfaceBorderBold, width: 1),
+                                        ),
+                                        child: Text(
+                                          server.software.shortName,
+                                          style: const TextStyle(
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.w900,
+                                            color: AppColors.accentCyan,
+                                            letterSpacing: 0.5,
+                                          ),
+                                        ),
+                                      ),
+                                      Expanded(
+                                        child: Text(
+                                          server.name,
+                                          style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.white, fontSize: 13),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    '${server.ip}:${server.port}',
+                                    style: const TextStyle(fontSize: 12, fontFamily: 'monospace', color: AppColors.textSecondary),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            FilledButton.icon(
+                              onPressed: () => _inputDiscoveredServer(server),
+                              icon: const Icon(Icons.input_rounded, size: 14),
+                              label: const Text(
+                                'Input',
+                                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
+                              ),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: AppColors.accentCyan,
+                                foregroundColor: AppColors.surface,
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                        child: const Text('Connect', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
                       ),
-                    ],
+                    ),
                   ),
                 );
               }),
