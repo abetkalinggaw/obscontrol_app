@@ -384,7 +384,7 @@ class _StudioTransitionControlState
                   // ── Row 1: Action Buttons & Duration Selector (Triggers & Settings) ──
                   SizedBox(
                     height: 30,
-                    child: Row(
+                    child: _lockWhileTBar(Row(
                       children: [
                         // CUT Button (Icon only)
                         Expanded(
@@ -420,7 +420,7 @@ class _StudioTransitionControlState
                           ),
                         ),
                       ],
-                    ),
+                    )),
                   ),
 
                   const SizedBox(height: 6),
@@ -446,7 +446,7 @@ class _StudioTransitionControlState
           // ── 1. Action Buttons: CUT, FADE & Duration Settings ────────
           SizedBox(
             height: 30,
-            child: Row(
+            child: _lockWhileTBar(Row(
               children: [
                 // CUT Button (Icon only)
                 Expanded(
@@ -479,7 +479,7 @@ class _StudioTransitionControlState
                   child: _buildDurationButton(context, duration),
                 ),
               ],
-            ),
+            )),
           ),
 
           const SizedBox(height: 5),
@@ -487,6 +487,23 @@ class _StudioTransitionControlState
           // ── 2. OBS T-Bar Manual Transition Slider ──────────────────
           _buildTBarSlider(isHorizontal: false),
         ],
+      ),
+    );
+  }
+
+  /// True while the T-Bar is being used (dragged, held mid-way, completing or cooling down).
+  bool get _tbarBusy =>
+      _isDragging || _isCompleting || _isCoolingDown || _touchActive || _tbarPosition > 0.0;
+
+  /// Disables and dims the transition buttons / duration selector while the T-Bar is in use.
+  Widget _lockWhileTBar(Widget child) {
+    final busy = _tbarBusy;
+    return IgnorePointer(
+      ignoring: busy,
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 150),
+        opacity: busy ? 0.35 : 1.0,
+        child: child,
       ),
     );
   }
