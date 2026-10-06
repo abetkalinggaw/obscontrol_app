@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import '../core/services/storage_service.dart';
 import '../core/utils/haptics.dart';
 import '../models/connection_state.dart';
@@ -9,6 +10,7 @@ class SettingsState {
   final String activeProfileId;
   final bool hapticsEnabled;
   final bool autoReconnect;
+  final bool keepScreenOn;
 
   const SettingsState({
     required this.profiles,
@@ -16,6 +18,7 @@ class SettingsState {
     required this.activeProfileId,
     required this.hapticsEnabled,
     required this.autoReconnect,
+    required this.keepScreenOn,
   });
 
   ObsConnectionProfile get activeProfile {
@@ -40,6 +43,7 @@ class SettingsState {
     String? activeProfileId,
     bool? hapticsEnabled,
     bool? autoReconnect,
+    bool? keepScreenOn,
   }) {
     return SettingsState(
       profiles: profiles ?? this.profiles,
@@ -47,6 +51,7 @@ class SettingsState {
       activeProfileId: activeProfileId ?? this.activeProfileId,
       hapticsEnabled: hapticsEnabled ?? this.hapticsEnabled,
       autoReconnect: autoReconnect ?? this.autoReconnect,
+      keepScreenOn: keepScreenOn ?? this.keepScreenOn,
     );
   }
 }
@@ -58,6 +63,12 @@ class SettingsNotifier extends Notifier<SettingsState> {
   SettingsState build() {
     final storage = ref.watch(storageServiceProvider);
     Haptics.enabled = storage.getHapticsEnabled();
+    final keepScreenOn = storage.getKeepScreenOn();
+    if (keepScreenOn) {
+      WakelockPlus.enable();
+    } else {
+      WakelockPlus.disable();
+    }
     return SettingsState(
       profiles: storage.loadProfiles(),
       recentDevices: storage.loadRecentDevices(),
@@ -65,6 +76,7 @@ class SettingsNotifier extends Notifier<SettingsState> {
           (storage.loadProfiles().isNotEmpty ? storage.loadProfiles().first.id : 'default'),
       hapticsEnabled: storage.getHapticsEnabled(),
       autoReconnect: storage.getAutoReconnect(),
+      keepScreenOn: keepScreenOn,
     );
   }
 
@@ -191,6 +203,16 @@ class SettingsNotifier extends Notifier<SettingsState> {
   Future<void> setAutoReconnect(bool autoReconnect) async {
     await _storage.setAutoReconnect(autoReconnect);
     state = state.copyWith(autoReconnect: autoReconnect);
+  }
+
+  Future<void> setKeepScreenOn(bool keepOn) async {
+    if (keepOn) {
+      await WakelockPlus.enable();
+    } else {
+      await WakelockPlus.disable();
+    }
+    await _storage.setKeepScreenOn(keepOn);
+    state = state.copyWith(keepScreenOn: keepOn);
   }
 }
 

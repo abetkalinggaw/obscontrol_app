@@ -201,6 +201,10 @@ class StorageService {
   bool getHapticsEnabled() => _prefs.getBool(_keyHaptics) ?? true;
   Future<void> setHapticsEnabled(bool enabled) => _prefs.setBool(_keyHaptics, enabled);
 
+  static const _keyKeepScreenOn = 'obs_keep_screen_on';
+  bool getKeepScreenOn() => _prefs.getBool(_keyKeepScreenOn) ?? true;
+  Future<void> setKeepScreenOn(bool keepOn) => _prefs.setBool(_keyKeepScreenOn, keepOn);
+
   bool getAutoReconnect() => _prefs.getBool(_keyAutoReconnect) ?? true;
   Future<void> setAutoReconnect(bool autoReconnect) => _prefs.setBool(_keyAutoReconnect, autoReconnect);
 
@@ -223,5 +227,9 @@ class StorageService {
   static const _keyTransitionDuration = 'obs_transition_duration';
   int getTransitionDuration() => _prefs.getInt(_keyTransitionDuration) ?? 300;
   Future<void> setTransitionDuration(int ms) => _prefs.setInt(_keyTransitionDuration, ms);
+
+  static const _keyMonitoredAudioChannel = 'obs_monitored_audio_channel';
+  String? getMonitoredAudioChannel() => _prefs.getString(_keyMonitoredAudioChannel);
+  Future<void> setMonitoredAudioChannel(String channelName) => _prefs.setString(_keyMonitoredAudioChannel, channelName);
 }
 

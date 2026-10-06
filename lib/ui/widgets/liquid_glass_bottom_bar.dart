@@ -26,6 +26,12 @@ class LiquidGlassBottomBar extends StatelessWidget {
       tooltip: 'Scene Switcher',
     ),
     _NavItem(
+      icon: Icons.grid_view_outlined,
+      activeIcon: Icons.grid_view_rounded,
+      label: 'Multiview',
+      tooltip: 'Multiview Monitor',
+    ),
+    _NavItem(
       icon: Icons.equalizer_outlined,
       activeIcon: Icons.equalizer_rounded,
       label: 'Audio',

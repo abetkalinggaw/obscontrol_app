@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 import 'core/constants/app_theme.dart';
 import 'core/services/storage_service.dart';
@@ -64,6 +65,10 @@ class _ObsControlAppState extends ConsumerState<ObsControlApp>
   @override
   void didChangeAppLifecycleState(AppLifecycleState lifecycleState) {
     if (lifecycleState == AppLifecycleState.resumed) {
+      final keepScreenOn = ref.read(settingsProvider).keepScreenOn;
+      if (keepScreenOn) {
+        WakelockPlus.enable();
+      }
       _checkAndReconnect();
     }
   }

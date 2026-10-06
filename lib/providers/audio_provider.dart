@@ -76,6 +76,25 @@ final hiddenAudioChannelsProvider =
     NotifierProvider<HiddenAudioChannelsNotifier, Set<String>>(
         HiddenAudioChannelsNotifier.new);
 
+class MonitoredAudioChannelNotifier extends Notifier<String?> {
+  StorageService get _storage => ref.read(storageServiceProvider);
+
+  @override
+  String? build() {
+    final storage = ref.watch(storageServiceProvider);
+    return storage.getMonitoredAudioChannel();
+  }
+
+  void selectChannel(String channelName) {
+    state = channelName;
+    _storage.setMonitoredAudioChannel(channelName);
+  }
+}
+
+final monitoredAudioChannelProvider =
+    NotifierProvider<MonitoredAudioChannelNotifier, String?>(
+        MonitoredAudioChannelNotifier.new);
+
 class AudioState {
   final List<ObsAudioSource> sources;
 

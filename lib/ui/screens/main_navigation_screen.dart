@@ -12,6 +12,7 @@ import '../widgets/telemetry_header.dart';
 import 'audio_mixer_screen.dart';
 import 'connection_settings_screen.dart';
 import 'landscape_multiview_screen.dart';
+import 'multiview_only_screen.dart';
 import 'switcher_screen.dart';
 
 class MainNavigationScreen extends ConsumerStatefulWidget {
@@ -28,12 +29,14 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
 
   final List<Widget> _portraitScreens = const [
     SwitcherScreen(),
+    MultiviewOnlyScreen(),
     AudioMixerScreen(),
     ConnectionSettingsScreen(),
   ];
 
   final List<Widget> _landscapeScreens = const [
     LandscapeMultiviewScreen(),
+    MultiviewOnlyScreen(),
     AudioMixerScreen(),
     ConnectionSettingsScreen(),
   ];

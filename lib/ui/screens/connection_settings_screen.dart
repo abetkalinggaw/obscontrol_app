@@ -1443,6 +1443,16 @@ class _ConnectionSettingsScreenState extends ConsumerState<ConnectionSettingsScr
               ),
               const Divider(height: 1, color: AppColors.surfaceBorder),
               SwitchListTile(
+                value: settingsState.keepScreenOn,
+                title: const Text('Keep Screen Awake (Always On)', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                subtitle: const Text('Prevents device screen from dimming or turning off while using the app', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                activeThumbColor: AppColors.connectedGreen,
+                onChanged: (val) {
+                  ref.read(settingsProvider.notifier).setKeepScreenOn(val);
+                },
+              ),
+              const Divider(height: 1, color: AppColors.surfaceBorder),
+              SwitchListTile(
                 value: settingsState.autoReconnect,
                 title: const Text('Auto-Reconnect on Launch & Resume', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
                 subtitle: const Text('Automatically reconnect to active broadcast engine when opening app or returning from background', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),

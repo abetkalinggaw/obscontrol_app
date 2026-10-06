@@ -10,7 +10,7 @@ class SceneGrid extends StatelessWidget {
   final String activePreviewScene;
   final bool studioModeEnabled;
   final bool isLocked;
-  final ValueChanged<String> onSelectScene;
+  final ValueChanged<String>? onSelectScene;
   final ValueChanged<String>? onCutScene;
   final void Function(int oldIndex, int newIndex)? onReorderScene;
   final EdgeInsetsGeometry padding;
@@ -26,7 +26,7 @@ class SceneGrid extends StatelessWidget {
     required this.activePreviewScene,
     required this.studioModeEnabled,
     this.isLocked = false,
-    required this.onSelectScene,
+    this.onSelectScene,
     this.onCutScene,
     this.onReorderScene,
     this.padding = EdgeInsets.zero,
@@ -172,10 +172,12 @@ class SceneGrid extends StatelessWidget {
                       child: Material(
                         color: Colors.transparent,
                         child: InkWell(
-                          onTap: () {
-                            Haptics.medium();
-                            onSelectScene(scene.name);
-                          },
+                          onTap: onSelectScene != null
+                              ? () {
+                                  Haptics.medium();
+                                  onSelectScene!(scene.name);
+                                }
+                              : null,
                           onDoubleTap: onCutScene != null
                               ? () {
                                   Haptics.heavy();
