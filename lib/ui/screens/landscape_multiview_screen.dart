@@ -10,6 +10,7 @@ import '../widgets/grid_count_selector.dart';
 import '../widgets/obs_disconnected_prompt.dart';
 import '../widgets/scene_grid.dart';
 import '../widgets/scene_preview_box.dart';
+import '../widgets/program_monitor.dart';
 import '../widgets/studio_transition_control.dart';
 
 /// Landscape Multiview Screen — Bauhaus Unified Broadcast Deck.
@@ -521,14 +522,11 @@ class LandscapeMultiviewScreen extends ConsumerWidget {
             child: Center(
               child: AspectRatio(
                 aspectRatio: 16 / 9,
-                child: ScenePreviewBox(
-                  sceneName:
-                      programScene.isNotEmpty ? programScene : 'No Program',
-                  isProgram: true,
-                  isPreview: false,
-                  thumbnailBase64: programThumbnail,
-                  aspectRatio: 16 / 9,
-                  showTallyBanner: true,
+                child: ProgramMonitor(
+                  programScene: programScene,
+                  programThumbnail: programThumbnail,
+                  previewScene: previewScene,
+                  previewThumbnail: previewThumbnail,
                 ),
               ),
             ),

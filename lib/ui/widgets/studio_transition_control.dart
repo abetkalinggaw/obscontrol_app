@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/haptics.dart';
 import '../../providers/scenes_provider.dart';
+import '../../providers/transition_mix_provider.dart';
 
 /// A precision broadcast transition control center designed for Studio Mode.
 ///
@@ -67,6 +68,8 @@ class _StudioTransitionControlState
         });
         if (_animatingToCompletion) {
           _sendThrottledTBar(_tbarPosition, release: false);
+        } else {
+          ref.read(transitionMixProvider.notifier).setManual(_tbarPosition);
         }
       });
   }
@@ -87,6 +90,7 @@ class _StudioTransitionControlState
     _animatingToCompletion = false;
     _isDragging = false;
     _touchActive = false;
+    ref.read(transitionMixProvider.notifier).reset();
     _sendThrottledTBar(0.0, release: true);
     setState(() {
       _tbarPosition = 0.0;
@@ -102,6 +106,8 @@ class _StudioTransitionControlState
     _animatingToCompletion = false;
     _isDragging = false;
     _touchActive = false;
+    final durationMs = ref.read(transitionDurationProvider);
+    ref.read(transitionMixProvider.notifier).runAuto(durationMs);
     _sendThrottledTBar(0.0, release: true);
     setState(() {
       _tbarPosition = 0.0;
@@ -208,6 +214,7 @@ class _StudioTransitionControlState
           if (!mounted) return;
           _animatingToCompletion = false;
           _snapController.stop();
+          ref.read(transitionMixProvider.notifier).holdComplete();
           _sendThrottledTBar(1.0, release: true);
           startCooldown();
         },
@@ -215,6 +222,7 @@ class _StudioTransitionControlState
     } else {
       _animatingToCompletion = false;
       _snapController.stop();
+      ref.read(transitionMixProvider.notifier).holdComplete();
       _sendThrottledTBar(1.0, release: true);
       startCooldown();
     }
@@ -244,6 +252,7 @@ class _StudioTransitionControlState
       _tbarPosition = newPos;
     });
 
+    ref.read(transitionMixProvider.notifier).setManual(newPos);
     _sendThrottledTBar(newPos, release: false);
   }
 
@@ -252,10 +261,10 @@ class _StudioTransitionControlState
     _isDragging = false;
     setState(() {});
 
-    if (_tbarPosition >= 0.88) {
+    if (_tbarPosition >= 0.90) {
       // Completed transition to Program
       _completeTransition();
-    } else if (_tbarPosition <= 0.12) {
+    } else if (_tbarPosition <= 0.10) {
       // Reverted to Preview
       Haptics.selection();
       _animatingToCompletion = false;
@@ -265,6 +274,7 @@ class _StudioTransitionControlState
         curve: Curves.easeOutCubic,
         onDone: () {
           if (!mounted) return;
+          ref.read(transitionMixProvider.notifier).reset();
           _sendThrottledTBar(0.0, release: true);
           setState(() {
             _tbarPosition = 0.0;
@@ -274,6 +284,7 @@ class _StudioTransitionControlState
     } else {
       // User released in the middle: FREELY HOLD the transition at this position!
       Haptics.selection();
+      ref.read(transitionMixProvider.notifier).setManual(_tbarPosition);
       _sendThrottledTBar(_tbarPosition, release: false);
     }
   }
