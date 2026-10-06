@@ -11,7 +11,7 @@ import '../dialogs/connection_guide_dialog.dart';
 import '../widgets/floating_bars_insets.dart';
 import 'barcode_scanner_screen.dart';
 
-/// Bauhaus Architectural Connection & Preferences Screen with Accordion Profiles & Recent Devices.
+/// Flat Precision Connection & Preferences Screen with Accordion Profiles & Recent Devices.
 class ConnectionSettingsScreen extends ConsumerStatefulWidget {
   const ConnectionSettingsScreen({super.key});
 
@@ -860,7 +860,7 @@ class _ConnectionSettingsScreenState extends ConsumerState<ConnectionSettingsScr
 
         const SizedBox(height: 10),
 
-        // Bauhaus Quick Action: Scan OBS QR Code
+        // Quick Action: Scan OBS QR Code
         InkWell(
           onTap: () => BarcodeScannerScreen.open(context, autoConnect: true),
           borderRadius: BorderRadius.circular(5),
@@ -893,7 +893,7 @@ class _ConnectionSettingsScreenState extends ConsumerState<ConnectionSettingsScr
 
         const SizedBox(height: 8),
 
-        // Bauhaus Quick Action: Connection Setup Guide
+        // Quick Action: Connection Setup Guide
         InkWell(
           onTap: () => ConnectionGuideDialog.show(context),
           borderRadius: BorderRadius.circular(5),
@@ -1509,7 +1509,7 @@ class _ConnectionSettingsScreenState extends ConsumerState<ConnectionSettingsScr
     );
   }
 
-  // Bauhaus Collapsible Section Header (Accordion Header)
+  // Collapsible Section Header (Accordion Header)
   Widget _buildAccordionHeader({
     required String title,
     required IconData icon,

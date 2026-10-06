@@ -111,7 +111,7 @@ class MultiviewOnlyScreen extends ConsumerWidget {
                     programThumbnail: programThumbnail,
                   ),
 
-                  // ── Bauhaus Structural Divider ───────────────────────
+                  // ── Flat Structural Divider ─────────────────────────
                   _buildSectionDivider(),
 
                   const SizedBox(height: 4),

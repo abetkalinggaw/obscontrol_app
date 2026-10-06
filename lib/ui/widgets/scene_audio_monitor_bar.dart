@@ -13,7 +13,7 @@ import '../../providers/audio_provider.dart';
 /// - Channel selector pill (shows 1 audio source at a time with dropdown or tap-to-cycle).
 /// - Stereo horizontal VU meters (L & R) with OBS Studio broadcast color zones (green, yellow, red).
 /// - Peak hold indicators and formatted live dB readout.
-/// - Crisp, compact Bauhaus broadcast layout that fits neatly at the bottom edge.
+/// - Crisp, compact flat broadcast layout that fits neatly at the bottom edge.
 class SceneAudioMonitorBar extends ConsumerWidget {
   const SceneAudioMonitorBar({super.key});
 

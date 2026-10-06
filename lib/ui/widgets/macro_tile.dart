@@ -3,9 +3,9 @@ import '../../core/constants/app_colors.dart';
 import '../../core/utils/haptics.dart';
 import '../../models/macro_action.dart';
 
-/// Bauhaus Architectural Macro Pad.
+/// Flat Industrial Macro Pad.
 ///
-/// Designed as a tactile industrial deck key with crisp 3px geometry,
+/// Designed as a tactile broadcast deck key with clean flat geometry,
 /// high-contrast functional color framing, and bold uppercase labeling.
 class MacroTile extends StatelessWidget {
   final MacroAction macro;

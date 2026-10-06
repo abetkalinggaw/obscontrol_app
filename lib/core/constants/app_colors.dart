@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
-/// Pitch Dark Precision — Flat Minimalist Design System Color Palette.
+/// Flat Precision Design System Color Palette.
 ///
-/// Built on high-contrast pitch obsidian, flat slate surfaces, razor-thin
-/// hairline dividers, and vibrant flat signal tallies. Zero blurry glass
-/// or fuzzy drop shadows.
+/// Built on high-contrast dark surfaces, solid flat panels, crisp hairline
+/// borders, and clear flat signal tallies. Zero skeuomorphism, zero blurry glass,
+/// zero fuzzy shadows.
 class AppColors {
   AppColors._();
 
@@ -18,16 +18,13 @@ class AppColors {
   static const Color surfaceBorderBold = Color(0xFF383E4E);
   static const Color surfaceBorderActive = surfaceBorderBold;
 
-  // Broadcast Signal Tallies (Muted Minimalist Precision)
-  static const Color liveRed = Color(0xFFD95D5D); // Muted Crimson — Program / Live Transmission
-  static const Color previewAmber = Color(0xFFD49B44); // Muted Ochre — Preview / Standby Staging
-  static const Color accentCyan = Color(0xFF4CA6B8); // Muted Slate Cyan — Active Interactive Controls
+  // Broadcast Signal Tallies (Flat Minimalist Precision)
+  static const Color liveRed = Color(0xFFD95D5D); // Crimson — Program / Live Transmission
+  static const Color previewAmber = Color(0xFFD49B44); // Ochre — Preview / Standby Staging
+  static const Color accentCyan = Color(0xFF4CA6B8); // Slate Cyan — Active Interactive Controls
 
   // Functional Aliases
   static const Color primary = liveRed;
-  static const Color bauhausRed = liveRed;
-  static const Color bauhausYellow = previewAmber;
-  static const Color bauhausBlue = accentCyan;
 
   // Auxiliary Functional Accents (Muted & Balanced)
   static const Color connectedGreen = Color(0xFF4FA878); // Muted Sage Emerald — Connection State

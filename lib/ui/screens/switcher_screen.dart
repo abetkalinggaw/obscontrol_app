@@ -14,17 +14,17 @@ import '../widgets/scene_preview_box.dart';
 import '../widgets/program_monitor.dart';
 import '../widgets/studio_transition_control.dart';
 
-/// Portrait Switcher Screen — Bauhaus Broadcast Console.
+/// Portrait Switcher Screen — Flat Broadcast Console.
 ///
-/// Built according to Bauhaus functionalism:
-/// - Crisp architectural console chassis (no decorative blur or fuzzy shadows).
+/// Built with clean flat design:
+/// - Crisp solid console chassis (no decorative blur or fuzzy shadows).
 /// - Fixed-height master monitor section maintaining strict 16:9 ratio.
-/// - Primary color triad:
-///     - Bauhaus Red: PROGRAM, CUT, ON AIR
-///     - Bauhaus Yellow: PREVIEW, FADE
-///     - Bauhaus Blue: STUDIO, INTERACTIVE CONTROLS
-/// - Orthogonal structural grid divider with uppercase geometric typography.
-/// - Scene grid strictly anchored directly under the divider.
+/// - Clear signal color hierarchy:
+///     - Signal Red: PROGRAM, CUT, ON AIR
+///     - Standby Amber: PREVIEW, FADE
+///     - Slate Cyan: STUDIO, INTERACTIVE CONTROLS
+/// - Clean hairline structural grid divider with uppercase typography.
+/// - Scene grid anchored directly under the divider.
 class SwitcherScreen extends ConsumerWidget {
   const SwitcherScreen({super.key});
 
@@ -126,7 +126,7 @@ class SwitcherScreen extends ConsumerWidget {
                         .triggerTransition('Fade'),
                   ),
 
-                  // ── Bauhaus Structural Divider ───────────────────────
+                  // ── Flat Structural Divider ─────────────────────────
                   _buildSectionDivider(
                     isLocked: scenesState.isLocked,
                   ),

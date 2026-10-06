@@ -187,7 +187,7 @@ class AudioChannelVisibilitySheet extends ConsumerWidget {
                                 ),
                                 child: Row(
                                   children: [
-                                    // Custom Bauhaus Checkbox
+                                    // Custom Flat Checkbox
                                     Container(
                                       width: 18,
                                       height: 18,

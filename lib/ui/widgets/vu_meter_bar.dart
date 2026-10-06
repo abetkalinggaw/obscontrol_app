@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 
-/// Bauhaus Geometric VU Meter Bar.
+/// Flat Geometric VU Meter Bar.
 ///
-/// Features sharp rectangular geometry and clean primary color progression
-/// (Functional Green -> Bauhaus Yellow -> Bauhaus Red).
+/// Features clean solid rectangular geometry and clear signal color progression
+/// (Green -> Yellow -> Red).
 class VuMeterBar extends StatelessWidget {
   final double level; // 0.0 to 1.0
   final double peakHold; // 0.0 to 1.0

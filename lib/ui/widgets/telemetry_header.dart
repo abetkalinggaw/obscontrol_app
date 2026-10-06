@@ -5,10 +5,10 @@ import '../../core/utils/haptics.dart';
 import '../../models/connection_state.dart';
 import '../../models/obs_stats.dart';
 
-/// Bauhaus Architectural Telemetry & Status Header.
+/// Flat Precision Telemetry & Status Header.
 ///
-/// Strips away glass blurs and diffuse shadows in favor of crisp
-/// orthogonal layout, primary geometric cues, and monospaced telemetry data.
+/// Features clean solid dark panels, crisp hairline borders,
+/// high-contrast status cues, and clear monospaced telemetry data.
 class TelemetryHeader extends StatelessWidget {
   final ObsConnectionStatus connectionStatus;
   final ObsStats stats;

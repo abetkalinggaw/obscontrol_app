@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/haptics.dart';
 
-/// Bauhaus Minimalist Console Dock Navigation Bar for ObsControl.
+/// Flat Minimalist Console Dock Navigation Bar for ObsControl.
 ///
 /// Features docked edge-to-edge alignment with a crisp hairline top divider,
-/// precision 2.5px Bauhaus top-edge accent indicators, and pure typographic hierarchy.
+/// precision 2.5px flat top-edge accent indicators, and clean typographic hierarchy.
 class LiquidGlassBottomBar extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onTap;
@@ -115,7 +115,7 @@ class LiquidGlassBottomBar extends StatelessWidget {
           child: Stack(
             alignment: Alignment.center,
             children: [
-              // Minimalist active top indicator bar (Bauhaus geometric accent)
+              // Minimalist active top indicator bar (Flat geometric accent)
               Positioned(
                 top: 0,
                 left: 18,

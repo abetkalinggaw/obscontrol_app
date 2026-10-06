@@ -2,11 +2,10 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 
-/// Bauhaus Architectural Scene Monitor Box.
+/// Flat Broadcast Scene Monitor Box.
 ///
-/// Features strict 16:9 aspect ratio, crisp 3px architectural corner geometry,
-/// high-contrast structural borders, bold geometric channel index, and
-/// unmistakable Bauhaus Primary Red (Program) / Bauhaus Yellow (Preview) tallies.
+/// Features strict 16:9 aspect ratio, clean flat borders,
+/// bold channel index, and solid Program (Red) / Preview (Amber) signal tallies.
 class ScenePreviewBox extends StatelessWidget {
   final String sceneName;
   final bool isProgram;

@@ -10,7 +10,7 @@ import '../../models/connection_state.dart';
 import '../../providers/obs_provider.dart';
 import '../../providers/settings_provider.dart';
 
-/// Full-screen Bauhaus-inspired QR and Barcode scanner for OBS Studio WebSocket.
+/// Full-screen Flat Precision QR and Barcode scanner for OBS Studio WebSocket.
 class BarcodeScannerScreen extends ConsumerStatefulWidget {
   /// If [autoConnect] is true, immediately initiates connection upon valid scan.
   /// If false, returns the parsed [ObsConnectionData] to the caller via [Navigator.pop].
@@ -138,7 +138,7 @@ class _BarcodeScannerScreenState extends ConsumerState<BarcodeScannerScreen>
                 ),
                 const SizedBox(height: 14),
 
-                // Bauhaus Title
+                // Flat Header Title
                 Row(
                   children: [
                     Container(
@@ -580,7 +580,7 @@ class _BarcodeScannerScreenState extends ConsumerState<BarcodeScannerScreen>
   }
 }
 
-/// Custom painter for the Bauhaus dark cutout and corner bracket reticle
+/// Custom painter for the Flat dark cutout and corner bracket reticle
 class _ViewfinderOverlayPainter extends CustomPainter {
   final double cutoutSize;
   final double laserProgress;
@@ -613,7 +613,7 @@ class _ViewfinderOverlayPainter extends CustomPainter {
       ..strokeWidth = 1.0;
     canvas.drawRect(rect, borderPaint);
 
-    // Bauhaus Corner Target Brackets (Cadmium red & cyan accents)
+    // Corner Target Brackets (Program red & cyan accents)
     const bracketLength = 22.0;
     const bracketWidth = 3.0;
 

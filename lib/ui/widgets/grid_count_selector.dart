@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/haptics.dart';
 
-/// Bauhaus Segmented Grid Count Selector (4 | 8).
+/// Flat Segmented Grid Count Selector (4 | 8).
 class GridCountSelector extends StatelessWidget {
   final int selectedCount;
   final ValueChanged<int> onSelectCount;

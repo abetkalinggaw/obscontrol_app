@@ -13,15 +13,15 @@ import '../widgets/scene_preview_box.dart';
 import '../widgets/program_monitor.dart';
 import '../widgets/studio_transition_control.dart';
 
-/// Landscape Multiview Screen — Bauhaus Unified Broadcast Deck.
+/// Landscape Multiview Screen — Flat Unified Broadcast Deck.
 ///
-/// Implements Bauhaus functional ergonomics for live switching:
-/// - Crisp architectural chassis (zero blurry glass or arbitrary radii).
-/// - Top master area: Studio Mode ON presents side-by-side PREVIEW (Yellow)
+/// Implements clean flat functional ergonomics for live switching:
+/// - Crisp solid chassis (zero blurry glass or arbitrary gradients).
+/// - Top master area: Studio Mode ON presents side-by-side PREVIEW (Amber)
 ///   and PROGRAM (Red) 16:9 monitors flanking tactile CUT & FADE buttons.
 ///   Studio Mode OFF presents a single centered 16:9 PROGRAM monitor.
 /// - Bottom area: 4-column scene switcher grid (1 row for 4 scenes, 2 rows for 8 scenes)
-///   anchored directly under the Bauhaus SCENES divider.
+///   anchored directly under the flat SCENES divider.
 class LandscapeMultiviewScreen extends ConsumerWidget {
   const LandscapeMultiviewScreen({super.key});
 
@@ -120,7 +120,7 @@ class LandscapeMultiviewScreen extends ConsumerWidget {
                         .triggerTransition('Fade'),
                   ),
 
-                  // ── Bauhaus Structural Divider ───────────────────────
+                  // ── Flat Structural Divider ─────────────────────────
                   _buildSectionDivider(
                     studioModeEnabled: studioModeEnabled,
                     isLocked: scenesState.isLocked,
