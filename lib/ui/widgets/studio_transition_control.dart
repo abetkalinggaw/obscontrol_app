@@ -59,19 +59,20 @@ class _StudioTransitionControlState
   @override
   void initState() {
     super.initState();
-    _snapController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 200),
-    )..addListener(() {
-        setState(() {
-          _tbarPosition = _snapAnimation.value;
+    _snapController =
+        AnimationController(
+          vsync: this,
+          duration: const Duration(milliseconds: 200),
+        )..addListener(() {
+          setState(() {
+            _tbarPosition = _snapAnimation.value;
+          });
+          if (_animatingToCompletion) {
+            _sendThrottledTBar(_tbarPosition, release: false);
+          } else {
+            ref.read(transitionMixProvider.notifier).setManual(_tbarPosition);
+          }
         });
-        if (_animatingToCompletion) {
-          _sendThrottledTBar(_tbarPosition, release: false);
-        } else {
-          ref.read(transitionMixProvider.notifier).setManual(_tbarPosition);
-        }
-      });
   }
 
   @override
@@ -132,7 +133,9 @@ class _StudioTransitionControlState
     _pendingTbarPos = null;
 
     // Stream subsequent updates at a steady ~30fps (33ms) cadence to avoid network packet pileup and frame drops
-    _tbarThrottleTimer = Timer.periodic(const Duration(milliseconds: 33), (timer) {
+    _tbarThrottleTimer = Timer.periodic(const Duration(milliseconds: 33), (
+      timer,
+    ) {
       if (!mounted) {
         timer.cancel();
         return;
@@ -140,7 +143,9 @@ class _StudioTransitionControlState
       if (_pendingTbarPos != null) {
         final toSend = _pendingTbarPos!;
         _pendingTbarPos = null;
-        ref.read(scenesProvider.notifier).setTBarPosition(toSend, release: false);
+        ref
+            .read(scenesProvider.notifier)
+            .setTBarPosition(toSend, release: false);
       } else if (!_isDragging && !_animatingToCompletion) {
         timer.cancel();
         _tbarThrottleTimer = null;
@@ -157,9 +162,10 @@ class _StudioTransitionControlState
     _snapController.stop();
     _snapController.duration = duration;
     final start = _tbarPosition;
-    _snapAnimation = Tween<double>(begin: start, end: target).animate(
-      CurvedAnimation(parent: _snapController, curve: curve),
-    );
+    _snapAnimation = Tween<double>(
+      begin: start,
+      end: target,
+    ).animate(CurvedAnimation(parent: _snapController, curve: curve));
 
     late void Function(AnimationStatus) statusListener;
     statusListener = (AnimationStatus status) {
@@ -229,7 +235,9 @@ class _StudioTransitionControlState
   }
 
   void _handleDragDelta(double deltaDx, double trackWidth) {
-    if (_isCompleting || _isCoolingDown || trackWidth <= _kTbarHandleWidth) return;
+    if (_isCompleting || _isCoolingDown || trackWidth <= _kTbarHandleWidth) {
+      return;
+    }
     final maxTravel = trackWidth - _kTbarHandleWidth;
     if (maxTravel <= 0) return;
 
@@ -312,10 +320,7 @@ class _StudioTransitionControlState
     );
   }
 
-  Widget _buildDurationButton(
-    BuildContext context,
-    int duration,
-  ) {
+  Widget _buildDurationButton(BuildContext context, int duration) {
     return Tooltip(
       message: 'Transition Duration: ${duration}ms',
       child: Material(
@@ -330,10 +335,7 @@ class _StudioTransitionControlState
             decoration: BoxDecoration(
               color: AppColors.surfaceElevated,
               borderRadius: BorderRadius.circular(5),
-              border: Border.all(
-                color: AppColors.surfaceBorder,
-                width: 1.0,
-              ),
+              border: Border.all(color: AppColors.surfaceBorder, width: 1.0),
             ),
             child: Center(
               child: FittedBox(
@@ -383,8 +385,10 @@ class _StudioTransitionControlState
           final maxAvailable = constraints.maxWidth.isFinite
               ? constraints.maxWidth
               : 248.0;
-          final controlWidth =
-              (widget.width ?? 248.0).clamp(180.0, maxAvailable);
+          final controlWidth = (widget.width ?? 248.0).clamp(
+            180.0,
+            maxAvailable,
+          );
 
           return Center(
             child: SizedBox(
@@ -395,43 +399,42 @@ class _StudioTransitionControlState
                   // ── Row 1: Action Buttons & Duration Selector (Triggers & Settings) ──
                   SizedBox(
                     height: 30,
-                    child: _lockWhileTBar(Row(
-                      children: [
-                        // CUT Button (Icon only)
-                        Expanded(
-                          child: _TransitionIconButton(
-                            key: const Key('transition_cut_button'),
-                            tooltip: 'CUT',
-                            icon: Icons.bolt_rounded,
-                            iconColor: AppColors.textPrimary,
-                            bgColor: AppColors.liveRed,
-                            borderColor: AppColors.liveRed,
-                            onTap: _handleCut,
+                    child: _lockWhileTBar(
+                      Row(
+                        children: [
+                          // CUT Button (Icon only)
+                          Expanded(
+                            child: _TransitionIconButton(
+                              key: const Key('transition_cut_button'),
+                              tooltip: 'CUT',
+                              icon: Icons.bolt_rounded,
+                              iconColor: AppColors.textPrimary,
+                              bgColor: AppColors.liveRed,
+                              borderColor: AppColors.liveRed,
+                              onTap: _handleCut,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        // FADE Button (Icon only)
-                        Expanded(
-                          child: _TransitionIconButton(
-                            key: const Key('transition_fade_button'),
-                            tooltip: 'FADE',
-                            icon: Icons.auto_awesome,
-                            iconColor: const Color(0xFF0F1115),
-                            bgColor: AppColors.previewAmber,
-                            borderColor: AppColors.previewAmber,
-                            onTap: _handleFade,
+                          const SizedBox(width: 8),
+                          // FADE Button (Icon only)
+                          Expanded(
+                            child: _TransitionIconButton(
+                              key: const Key('transition_fade_button'),
+                              tooltip: 'FADE',
+                              icon: Icons.auto_awesome,
+                              iconColor: const Color(0xFF0F1115),
+                              bgColor: AppColors.previewAmber,
+                              borderColor: AppColors.previewAmber,
+                              onTap: _handleFade,
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 8),
-                        // Transition Duration Settings Button
-                        Expanded(
-                          child: _buildDurationButton(
-                            context,
-                            duration,
+                          const SizedBox(width: 8),
+                          // Transition Duration Settings Button
+                          Expanded(
+                            child: _buildDurationButton(context, duration),
                           ),
-                        ),
-                      ],
-                    )),
+                        ],
+                      ),
+                    ),
                   ),
 
                   const SizedBox(height: 6),
@@ -457,40 +460,40 @@ class _StudioTransitionControlState
           // ── 1. Action Buttons: CUT, FADE & Duration Settings ────────
           SizedBox(
             height: 30,
-            child: _lockWhileTBar(Row(
-              children: [
-                // CUT Button (Icon only)
-                Expanded(
-                  child: _TransitionIconButton(
-                    key: const Key('transition_cut_button'),
-                    tooltip: 'CUT',
-                    icon: Icons.bolt_rounded,
-                    iconColor: AppColors.textPrimary,
-                    bgColor: AppColors.liveRed,
-                    borderColor: AppColors.liveRed,
-                    onTap: _handleCut,
+            child: _lockWhileTBar(
+              Row(
+                children: [
+                  // CUT Button (Icon only)
+                  Expanded(
+                    child: _TransitionIconButton(
+                      key: const Key('transition_cut_button'),
+                      tooltip: 'CUT',
+                      icon: Icons.bolt_rounded,
+                      iconColor: AppColors.textPrimary,
+                      bgColor: AppColors.liveRed,
+                      borderColor: AppColors.liveRed,
+                      onTap: _handleCut,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 5),
-                // FADE Button (Icon only)
-                Expanded(
-                  child: _TransitionIconButton(
-                    key: const Key('transition_fade_button'),
-                    tooltip: 'FADE',
-                    icon: Icons.auto_awesome,
-                    iconColor: const Color(0xFF0F1115),
-                    bgColor: AppColors.previewAmber,
-                    borderColor: AppColors.previewAmber,
-                    onTap: _handleFade,
+                  const SizedBox(width: 5),
+                  // FADE Button (Icon only)
+                  Expanded(
+                    child: _TransitionIconButton(
+                      key: const Key('transition_fade_button'),
+                      tooltip: 'FADE',
+                      icon: Icons.auto_awesome,
+                      iconColor: const Color(0xFF0F1115),
+                      bgColor: AppColors.previewAmber,
+                      borderColor: AppColors.previewAmber,
+                      onTap: _handleFade,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 5),
-                // Transition Duration Settings Button (Same height and width, consistent style!)
-                Expanded(
-                  child: _buildDurationButton(context, duration),
-                ),
-              ],
-            )),
+                  const SizedBox(width: 5),
+                  // Transition Duration Settings Button (Same height and width, consistent style!)
+                  Expanded(child: _buildDurationButton(context, duration)),
+                ],
+              ),
+            ),
           ),
 
           const SizedBox(height: 5),
@@ -504,7 +507,11 @@ class _StudioTransitionControlState
 
   /// True while the T-Bar is being used (dragged, held mid-way, completing or cooling down).
   bool get _tbarBusy =>
-      _isDragging || _isCompleting || _isCoolingDown || _touchActive || _tbarPosition > 0.0;
+      _isDragging ||
+      _isCompleting ||
+      _isCoolingDown ||
+      _touchActive ||
+      _tbarPosition > 0.0;
 
   /// Disables and dims the transition buttons / duration selector while the T-Bar is in use.
   Widget _lockWhileTBar(Widget child) {
@@ -523,14 +530,8 @@ class _StudioTransitionControlState
     return LayoutBuilder(
       builder: (context, constraints) {
         final trackWidth = constraints.maxWidth;
-        final maxTravel = (trackWidth - _kTbarHandleWidth).clamp(
-          0.0,
-          1000.0,
-        );
-        final handleOffset = (_tbarPosition * maxTravel).clamp(
-          0.0,
-          maxTravel,
-        );
+        final maxTravel = (trackWidth - _kTbarHandleWidth).clamp(0.0, 1000.0);
+        final handleOffset = (_tbarPosition * maxTravel).clamp(0.0, maxTravel);
         final isHeld = _tbarPosition > 0.05 && _tbarPosition < 0.95;
 
         return Container(
@@ -547,299 +548,283 @@ class _StudioTransitionControlState
               children: [
                 // ── Rail Slot / Groove ───────────────
                 Center(
-                            child: Container(
-                              height: 6,
-                              width: trackWidth,
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF0C0E12),
-                                borderRadius: BorderRadius.circular(3),
-                                border: Border.all(
-                                  color: AppColors.surfaceBorderBold,
-                                  width: 0.9,
-                                ),
-                              ),
-                            ),
-                          ),
-
-                          // ── Unchanged Active Transition Fill ───────────
-                          if (_tbarPosition > 0.01)
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: Container(
-                                height: 6,
-                                width: (handleOffset + (_kTbarHandleWidth / 2))
-                                    .clamp(0.0, trackWidth),
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(3),
-                                  gradient: const LinearGradient(
-                                    colors: [
-                                      AppColors.previewAmber,
-                                      AppColors.liveRed,
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-
-                          // ── Broadcast T-Bar Handle (Finger-Accessible 44px Height, Outside Rail) ──
-                          Positioned(
-                            left: handleOffset,
-                            width: _kTbarHandleWidth,
-                            top: 0,
-                            bottom: 0,
-                            child: GestureDetector(
-                              key: const Key('tbar_slider_handle'),
-                              behavior: HitTestBehavior.opaque,
-                              onHorizontalDragStart: (_) {
-                                if (_isCompleting || _isCoolingDown) return;
-                                _touchActive = true;
-                                _snapController.stop();
-                                _isDragging = true;
-                                _lastHapticDetent = (_tbarPosition * 20).round();
-                                Haptics.selection();
-                                setState(() {});
-                              },
-                              onHorizontalDragUpdate: (details) {
-                                if (_isCompleting || _isCoolingDown) return;
-                                _handleDragDelta(details.delta.dx, trackWidth);
-                              },
-                              onHorizontalDragEnd: (_) {
-                                _touchActive = false;
-                                if (_isCompleting) return;
-                                if (_isCoolingDown) {
-                                  if (_cooldownTimer == null || !_cooldownTimer!.isActive) {
-                                    setState(() {
-                                      _isCoolingDown = false;
-                                    });
-                                  }
-                                  return;
-                                }
-                                _handleDragEnd();
-                              },
-                              onHorizontalDragCancel: () {
-                                _touchActive = false;
-                                if (_isCompleting) return;
-                                if (_isCoolingDown) {
-                                  if (_cooldownTimer == null || !_cooldownTimer!.isActive) {
-                                    setState(() {
-                                      _isCoolingDown = false;
-                                    });
-                                  }
-                                  return;
-                                }
-                                _handleDragEnd();
-                              },
-                              child: AnimatedOpacity(
-                                duration: const Duration(milliseconds: 150),
-                                opacity: _isCoolingDown ? 0.6 : 1.0,
-                                child: Center(
-                                  child: Container(
-                                    width: _kTbarHandleWidth,
-                                    height: _kTbarHandleHeight,
-                                    decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        begin: Alignment.topCenter,
-                                        end: Alignment.bottomCenter,
-                                        colors: _isCoolingDown
-                                            ? const [
-                                                Color(0xFF222630),
-                                                Color(0xFF161920),
-                                                Color(0xFF0F1116),
-                                              ]
-                                            : _isDragging
-                                                ? const [
-                                                    Color(0xFF3E475A),
-                                                    Color(0xFF242A36),
-                                                    Color(0xFF181C24),
-                                                  ]
-                                                : (isHeld
-                                                    ? const [
-                                                        Color(0xFF363E4E),
-                                                        Color(0xFF202530),
-                                                        Color(0xFF161920),
-                                                      ]
-                                                    : const [
-                                                        Color(0xFF2E3442),
-                                                        Color(0xFF1C2028),
-                                                        Color(0xFF13161C),
-                                                      ]),
-                                      ),
-                                      borderRadius: BorderRadius.circular(5),
-                                      border: Border.all(
-                                        color: _isCoolingDown
-                                            ? const Color(0xFF3A4252)
-                                            : _isDragging
-                                                ? AppColors.accentCyan
-                                                : (isHeld
-                                                    ? AppColors.previewAmber
-                                                    : const Color(0xFF5A6478)),
-                                        width: 1.4,
-                                      ),
-                                      boxShadow: [
-                                        // Deep 3D drop shadow lifting handle off the rail
-                                        BoxShadow(
-                                          color: Colors.black.withValues(
-                                            alpha: 0.7,
-                                          ),
-                                          blurRadius: 7,
-                                          spreadRadius: 1,
-                                          offset: const Offset(0, 3),
-                                        ),
-                                        if (!_isCoolingDown && isHeld)
-                                          BoxShadow(
-                                            color: AppColors.previewAmber
-                                                .withValues(alpha: 0.4),
-                                            blurRadius: 8,
-                                            spreadRadius: 1,
-                                          )
-                                        else if (!_isCoolingDown && _isDragging)
-                                          BoxShadow(
-                                            color: AppColors.accentCyan
-                                                .withValues(alpha: 0.4),
-                                            blurRadius: 8,
-                                            spreadRadius: 1,
-                                          ),
-                                      ],
-                                    ),
-                                    child: Stack(
-                                      alignment: Alignment.center,
-                                      children: [
-                                        // Top bevel specular highlight
-                                        Positioned(
-                                          top: 1.5,
-                                          left: 3,
-                                          right: 3,
-                                          child: Container(
-                                            height: 1.2,
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFF6E7A94),
-                                              borderRadius: BorderRadius.circular(
-                                                1,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                        // Top knurl notch (T-Bar head grip)
-                                        Positioned(
-                                          top: 6,
-                                          child: Container(
-                                            width: 14,
-                                            height: 1.2,
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFF434C60),
-                                              borderRadius: BorderRadius.circular(
-                                                1,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                        // Left tactile knurl rib
-                                        Positioned(
-                                          left: 6.5,
-                                          top: 12,
-                                          bottom: 12,
-                                          child: Container(
-                                            width: 1.5,
-                                            decoration: BoxDecoration(
-                                              color: const Color(0xFF475064),
-                                              borderRadius: BorderRadius.circular(
-                                                1,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                        // Center illuminated status tally needle
-                                        Center(
-                                          child: Container(
-                                            width: 2.2,
-                                            height: 10,
-                                            decoration: BoxDecoration(
-                                              color: _isCoolingDown
-                                                  ? const Color(0xFF4A5568)
-                                                  : _isDragging
-                                                      ? AppColors.accentCyan
-                                                      : (isHeld
-                                                          ? AppColors.previewAmber
-                                                          : const Color(
-                                                              0xFFE2E8F0,
-                                                            )),
-                                              borderRadius: BorderRadius.circular(
-                                                1,
-                                              ),
-                                              boxShadow: (!_isCoolingDown &&
-                                                      (_isDragging || isHeld))
-                                                  ? [
-                                                      BoxShadow(
-                                                        color: (_isDragging
-                                                                ? AppColors
-                                                                    .accentCyan
-                                                                : AppColors
-                                                                    .previewAmber)
-                                                            .withValues(
-                                                          alpha: 0.8,
-                                                        ),
-                                                        blurRadius: 5,
-                                                      ),
-                                                    ]
-                                                  : null,
-                                            ),
-                                          ),
-                                        ),
-                                        // Right tactile knurl rib
-                                        Positioned(
-                                          right: 6.5,
-                                          top: 12,
-                                          bottom: 12,
-                                          child: Container(
-                                            width: 1.5,
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFF475064),
-                                            borderRadius: BorderRadius.circular(
-                                              1,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      // Bottom knurl notch (T-Bar base grip)
-                                      Positioned(
-                                        bottom: 6,
-                                        child: Container(
-                                          width: 14,
-                                          height: 1.2,
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFF434C60),
-                                            borderRadius: BorderRadius.circular(
-                                              1,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      // Bottom subtle bevel
-                                      Positioned(
-                                        bottom: 1.5,
-                                        left: 3,
-                                        right: 3,
-                                        child: Container(
-                                          height: 1.0,
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFF262C38),
-                                            borderRadius: BorderRadius.circular(
-                                              1,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
+                  child: Container(
+                    height: 6,
+                    width: trackWidth,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0C0E12),
+                      borderRadius: BorderRadius.circular(3),
+                      border: Border.all(
+                        color: AppColors.surfaceBorderBold,
+                        width: 0.9,
                       ),
                     ),
-                  );
+                  ),
+                ),
+
+                // ── Unchanged Active Transition Fill ───────────
+                if (_tbarPosition > 0.01)
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Container(
+                      height: 6,
+                      width: (handleOffset + (_kTbarHandleWidth / 2)).clamp(
+                        0.0,
+                        trackWidth,
+                      ),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(3),
+                        gradient: const LinearGradient(
+                          colors: [AppColors.previewAmber, AppColors.liveRed],
+                        ),
+                      ),
+                    ),
+                  ),
+
+                // ── Broadcast T-Bar Handle (Finger-Accessible 44px Height, Outside Rail) ──
+                Positioned(
+                  left: handleOffset,
+                  width: _kTbarHandleWidth,
+                  top: 0,
+                  bottom: 0,
+                  child: GestureDetector(
+                    key: const Key('tbar_slider_handle'),
+                    behavior: HitTestBehavior.opaque,
+                    onHorizontalDragStart: (_) {
+                      if (_isCompleting || _isCoolingDown) return;
+                      _touchActive = true;
+                      _snapController.stop();
+                      _isDragging = true;
+                      _lastHapticDetent = (_tbarPosition * 20).round();
+                      Haptics.selection();
+                      setState(() {});
+                    },
+                    onHorizontalDragUpdate: (details) {
+                      if (_isCompleting || _isCoolingDown) return;
+                      _handleDragDelta(details.delta.dx, trackWidth);
+                    },
+                    onHorizontalDragEnd: (_) {
+                      _touchActive = false;
+                      if (_isCompleting) return;
+                      if (_isCoolingDown) {
+                        if (_cooldownTimer == null ||
+                            !_cooldownTimer!.isActive) {
+                          setState(() {
+                            _isCoolingDown = false;
+                          });
+                        }
+                        return;
+                      }
+                      _handleDragEnd();
+                    },
+                    onHorizontalDragCancel: () {
+                      _touchActive = false;
+                      if (_isCompleting) return;
+                      if (_isCoolingDown) {
+                        if (_cooldownTimer == null ||
+                            !_cooldownTimer!.isActive) {
+                          setState(() {
+                            _isCoolingDown = false;
+                          });
+                        }
+                        return;
+                      }
+                      _handleDragEnd();
+                    },
+                    child: AnimatedOpacity(
+                      duration: const Duration(milliseconds: 150),
+                      opacity: _isCoolingDown ? 0.6 : 1.0,
+                      child: Center(
+                        child: Container(
+                          width: _kTbarHandleWidth,
+                          height: _kTbarHandleHeight,
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: _isCoolingDown
+                                  ? const [
+                                      Color(0xFF222630),
+                                      Color(0xFF161920),
+                                      Color(0xFF0F1116),
+                                    ]
+                                  : _isDragging
+                                  ? const [
+                                      Color(0xFF3E475A),
+                                      Color(0xFF242A36),
+                                      Color(0xFF181C24),
+                                    ]
+                                  : (isHeld
+                                        ? const [
+                                            Color(0xFF363E4E),
+                                            Color(0xFF202530),
+                                            Color(0xFF161920),
+                                          ]
+                                        : const [
+                                            Color(0xFF2E3442),
+                                            Color(0xFF1C2028),
+                                            Color(0xFF13161C),
+                                          ]),
+                            ),
+                            borderRadius: BorderRadius.circular(5),
+                            border: Border.all(
+                              color: _isCoolingDown
+                                  ? const Color(0xFF3A4252)
+                                  : _isDragging
+                                  ? AppColors.accentCyan
+                                  : (isHeld
+                                        ? AppColors.previewAmber
+                                        : const Color(0xFF5A6478)),
+                              width: 1.4,
+                            ),
+                            boxShadow: [
+                              // Deep 3D drop shadow lifting handle off the rail
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.7),
+                                blurRadius: 7,
+                                spreadRadius: 1,
+                                offset: const Offset(0, 3),
+                              ),
+                              if (!_isCoolingDown && isHeld)
+                                BoxShadow(
+                                  color: AppColors.previewAmber.withValues(
+                                    alpha: 0.4,
+                                  ),
+                                  blurRadius: 8,
+                                  spreadRadius: 1,
+                                )
+                              else if (!_isCoolingDown && _isDragging)
+                                BoxShadow(
+                                  color: AppColors.accentCyan.withValues(
+                                    alpha: 0.4,
+                                  ),
+                                  blurRadius: 8,
+                                  spreadRadius: 1,
+                                ),
+                            ],
+                          ),
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              // Top bevel specular highlight
+                              Positioned(
+                                top: 1.5,
+                                left: 3,
+                                right: 3,
+                                child: Container(
+                                  height: 1.2,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF6E7A94),
+                                    borderRadius: BorderRadius.circular(1),
+                                  ),
+                                ),
+                              ),
+                              // Top knurl notch (T-Bar head grip)
+                              Positioned(
+                                top: 6,
+                                child: Container(
+                                  width: 14,
+                                  height: 1.2,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF434C60),
+                                    borderRadius: BorderRadius.circular(1),
+                                  ),
+                                ),
+                              ),
+                              // Left tactile knurl rib
+                              Positioned(
+                                left: 6.5,
+                                top: 12,
+                                bottom: 12,
+                                child: Container(
+                                  width: 1.5,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF475064),
+                                    borderRadius: BorderRadius.circular(1),
+                                  ),
+                                ),
+                              ),
+                              // Center illuminated status tally needle
+                              Center(
+                                child: Container(
+                                  width: 2.2,
+                                  height: 10,
+                                  decoration: BoxDecoration(
+                                    color: _isCoolingDown
+                                        ? const Color(0xFF4A5568)
+                                        : _isDragging
+                                        ? AppColors.accentCyan
+                                        : (isHeld
+                                              ? AppColors.previewAmber
+                                              : const Color(0xFFE2E8F0)),
+                                    borderRadius: BorderRadius.circular(1),
+                                    boxShadow:
+                                        (!_isCoolingDown &&
+                                            (_isDragging || isHeld))
+                                        ? [
+                                            BoxShadow(
+                                              color:
+                                                  (_isDragging
+                                                          ? AppColors.accentCyan
+                                                          : AppColors
+                                                                .previewAmber)
+                                                      .withValues(alpha: 0.8),
+                                              blurRadius: 5,
+                                            ),
+                                          ]
+                                        : null,
+                                  ),
+                                ),
+                              ),
+                              // Right tactile knurl rib
+                              Positioned(
+                                right: 6.5,
+                                top: 12,
+                                bottom: 12,
+                                child: Container(
+                                  width: 1.5,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF475064),
+                                    borderRadius: BorderRadius.circular(1),
+                                  ),
+                                ),
+                              ),
+                              // Bottom knurl notch (T-Bar base grip)
+                              Positioned(
+                                bottom: 6,
+                                child: Container(
+                                  width: 14,
+                                  height: 1.2,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF434C60),
+                                    borderRadius: BorderRadius.circular(1),
+                                  ),
+                                ),
+                              ),
+                              // Bottom subtle bevel
+                              Positioned(
+                                bottom: 1.5,
+                                left: 3,
+                                right: 3,
+                                child: Container(
+                                  height: 1.0,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF262C38),
+                                    borderRadius: BorderRadius.circular(1),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
       },
     );
   }

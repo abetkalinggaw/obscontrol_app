@@ -7,15 +7,20 @@ import '../../core/utils/haptics.dart';
 import '../../models/obs_audio_source.dart';
 import '../../providers/audio_provider.dart';
 
-/// Broadcast Audio Monitor Meter designed to align at the bottom of scene monitors.
+/// Broadcast Audio Monitor Meter designed for horizontal or vertical (portrait) orientation.
 ///
 /// Features:
 /// - Channel selector pill (shows 1 audio source at a time with dropdown or tap-to-cycle).
-/// - Stereo horizontal VU meters (L & R) with OBS Studio broadcast color zones (green, yellow, red).
+/// - Stereo VU meters (L & R) with OBS Studio broadcast color zones (green, yellow, red).
 /// - Peak hold indicators and formatted live dB readout.
-/// - Crisp, compact flat broadcast layout that fits neatly at the bottom edge.
+/// - Crisp, compact flat broadcast layout that fits neatly at bottom edge or on the right side.
 class SceneAudioMonitorBar extends ConsumerWidget {
-  const SceneAudioMonitorBar({super.key});
+  final bool isVertical;
+
+  const SceneAudioMonitorBar({
+    super.key,
+    this.isVertical = false,
+  });
 
   IconData _getSourceIcon(String name) {
     final lower = name.toLowerCase();
@@ -168,6 +173,21 @@ class SceneAudioMonitorBar extends ConsumerWidget {
     final isMuted = activeSource.muted;
     final iconData = isMuted ? Icons.mic_off_rounded : _getSourceIcon(activeSource.name);
 
+    if (isVertical) {
+      return _buildVerticalLayout(context, ref, activeSource, sources, isMuted, iconData);
+    }
+
+    return _buildHorizontalLayout(context, ref, activeSource, sources, isMuted, iconData);
+  }
+
+  Widget _buildHorizontalLayout(
+    BuildContext context,
+    WidgetRef ref,
+    ObsAudioSource activeSource,
+    List<ObsAudioSource> sources,
+    bool isMuted,
+    IconData iconData,
+  ) {
     return Container(
       height: 32,
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -316,6 +336,154 @@ class SceneAudioMonitorBar extends ConsumerWidget {
       ),
     );
   }
+
+  Widget _buildVerticalLayout(
+    BuildContext context,
+    WidgetRef ref,
+    ObsAudioSource activeSource,
+    List<ObsAudioSource> sources,
+    bool isMuted,
+    IconData iconData,
+  ) {
+    return Container(
+      width: 46,
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 5),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceElevated.withValues(alpha: 0.95),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(
+          color: isMuted ? AppColors.liveRed.withValues(alpha: 0.6) : AppColors.surfaceBorder,
+          width: 0.8,
+        ),
+      ),
+      child: Column(
+        children: [
+          // ── Source Selector Button ──────────────────────────────
+          InkWell(
+            onTap: () => _showSourcePicker(context, ref, sources, activeSource.name),
+            borderRadius: BorderRadius.circular(3),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 3),
+              decoration: BoxDecoration(
+                color: isMuted
+                    ? AppColors.liveRed.withValues(alpha: 0.15)
+                    : AppColors.accentCyan.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(3),
+                border: Border.all(
+                  color: isMuted
+                      ? AppColors.liveRed.withValues(alpha: 0.5)
+                      : AppColors.accentCyan.withValues(alpha: 0.4),
+                  width: 0.8,
+                ),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    iconData,
+                    size: 11,
+                    color: isMuted ? AppColors.liveRed : AppColors.accentCyan,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    activeSource.name,
+                    style: TextStyle(
+                      fontSize: 8,
+                      fontWeight: FontWeight.w800,
+                      color: isMuted ? AppColors.liveRed : AppColors.textPrimary,
+                      letterSpacing: 0.1,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 5),
+
+          // ── Dual Vertical VU Meters (L & R columns side-by-side) ──
+          Expanded(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // L Meter
+                Expanded(
+                  child: Column(
+                    children: [
+                      const Text(
+                        'L',
+                        style: TextStyle(
+                          fontSize: 7.5,
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.textMuted,
+                          fontFamily: 'monospace',
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Expanded(
+                        child: RepaintBoundary(
+                          child: _VerticalMonitorVuBar(
+                            level: isMuted ? 0.0 : activeSource.leftLevel,
+                            peak: isMuted ? 0.0 : activeSource.peakHold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 3),
+                // R Meter
+                Expanded(
+                  child: Column(
+                    children: [
+                      const Text(
+                        'R',
+                        style: TextStyle(
+                          fontSize: 7.5,
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.textMuted,
+                          fontFamily: 'monospace',
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Expanded(
+                        child: RepaintBoundary(
+                          child: _VerticalMonitorVuBar(
+                            level: isMuted ? 0.0 : activeSource.rightLevel,
+                            peak: isMuted ? 0.0 : activeSource.peakHold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 4),
+
+          // ── Live dB Readout at bottom ──────────────────────────
+          Text(
+            isMuted ? 'MUTE' : _formatDb(activeSource.volumeDb),
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontFamily: 'monospace',
+              fontSize: 7.5,
+              fontWeight: FontWeight.w800,
+              color: isMuted ? AppColors.liveRed : AppColors.textSecondary,
+              letterSpacing: 0.1,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _HorizontalVuBar extends StatelessWidget {
@@ -401,3 +569,96 @@ class _HorizontalVuPainter extends CustomPainter {
   bool shouldRepaint(covariant _HorizontalVuPainter old) =>
       old.level != level || old.peak != peak;
 }
+
+class _VerticalMonitorVuBar extends StatelessWidget {
+  final double level;
+  final double peak;
+
+  const _VerticalMonitorVuBar({required this.level, required this.peak});
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      painter: _VerticalMonitorVuPainter(
+        level: level.clamp(0.0, 1.0),
+        peak: peak.clamp(0.0, 1.0),
+      ),
+    );
+  }
+}
+
+class _VerticalMonitorVuPainter extends CustomPainter {
+  final double level;
+  final double peak;
+
+  _VerticalMonitorVuPainter({required this.level, required this.peak});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final bgPaint = Paint()..color = AppColors.backgroundDeep;
+    final borderPaint = Paint()
+      ..color = AppColors.surfaceBorder
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 0.6;
+
+    final rect = Rect.fromLTWH(0, 0, size.width, size.height);
+    canvas.drawRect(rect, bgPaint);
+    canvas.drawRect(rect, borderPaint);
+
+    if (level <= 0) return;
+
+    final fillHeight = size.height * level;
+    final fillTop = size.height - fillHeight;
+
+    // OBS Studio broadcast color zones:
+    // 0.00 - 0.85 (-60dB to -9dB)  -> Green
+    // 0.85 - 0.95 (-9dB to -3dB)   -> Yellow
+    // 0.95 - 1.00 (-3dB to 0dB)    -> Red
+    final greenStop = size.height * (1.0 - 0.85);
+    final yellowStop = size.height * (1.0 - 0.95);
+
+    // Green fill (bottom zone)
+    if (fillTop < size.height) {
+      final greenBottom = size.height;
+      final greenTop = math.max(fillTop, greenStop);
+      if (greenTop < greenBottom) {
+        canvas.drawRect(
+          Rect.fromLTRB(0, greenTop, size.width, greenBottom),
+          Paint()..color = AppColors.vuGreen,
+        );
+      }
+    }
+
+    // Yellow fill (mid zone)
+    if (fillTop < greenStop) {
+      final yellowTop = math.max(fillTop, yellowStop);
+      canvas.drawRect(
+        Rect.fromLTRB(0, yellowTop, size.width, greenStop),
+        Paint()..color = AppColors.vuYellow,
+      );
+    }
+
+    // Red fill (peak zone)
+    if (fillTop < yellowStop) {
+      canvas.drawRect(
+        Rect.fromLTRB(0, fillTop, size.width, yellowStop),
+        Paint()..color = AppColors.vuRed,
+      );
+    }
+
+    // Peak hold line
+    if (peak > 0.02) {
+      final peakY = (size.height * (1.0 - peak)).clamp(0.0, size.height - 2.0);
+      final peakColor = peak > 0.85 ? AppColors.vuRed : AppColors.textPrimary;
+      canvas.drawRect(
+        Rect.fromLTRB(0, peakY, size.width, peakY + 2),
+        Paint()..color = peakColor,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _VerticalMonitorVuPainter old) =>
+      old.level != level || old.peak != peak;
+}
+

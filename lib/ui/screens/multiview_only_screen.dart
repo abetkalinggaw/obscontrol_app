@@ -101,43 +101,103 @@ class MultiviewOnlyScreen extends ConsumerWidget {
 
                   const SizedBox(height: 6),
 
-                  // ── Top: Master Monitors (Preview & Program / View Only) ──
-                  _buildMasterRow(
-                    height: fixedMasterHeight,
-                    studioModeEnabled: studioModeEnabled,
-                    previewScene: previewScene,
-                    programScene: programScene,
-                    previewThumbnail: previewThumbnail,
-                    programThumbnail: programThumbnail,
-                  ),
-
-                  // ── Flat Structural Divider ─────────────────────────
-                  _buildSectionDivider(),
-
-                  const SizedBox(height: 4),
-
-                  // ── Scene Monitor Grid (Non-interactive) ────────────
+                  // ── Center Content Area ───────────────────────────────
+                  // In landscape: Portrait vertical audio mixer level positioned on the left side
+                  // of the master monitors and scene grid (preventing overlap with right controls).
+                  // In portrait: Monitors & Grid stacked vertically with audio meter at the bottom.
                   Expanded(
-                    child: SceneGrid(
-                      scenes: scenesState.scenes,
-                      activeProgramScene: programScene,
-                      activePreviewScene: previewScene,
-                      studioModeEnabled: studioModeEnabled,
-                      isLocked: true, // Always locked against reordering
-                      padding: EdgeInsets.zero,
-                      gridCount: gridCount,
-                      crossAxisCount: isLandscape ? 4 : 2,
-                      alignment: Alignment.topCenter,
-                      onSelectScene: null, // Touch disabled: view-only!
-                      onCutScene: null, // Touch disabled: view-only!
-                      onReorderScene: null, // Touch disabled: view-only!
-                    ),
+                    child: isLandscape
+                        ? Row(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              // Left: Portrait (Vertical) Audio Monitor VU Meter
+                              const SceneAudioMonitorBar(isVertical: true),
+
+                              const SizedBox(width: 8),
+
+                              // Right: Master Monitors & Scene Monitor Grid
+                              Expanded(
+                                child: Column(
+                                  children: [
+                                    // Top: Master Monitors (Preview & Program / View Only)
+                                    _buildMasterRow(
+                                      height: fixedMasterHeight,
+                                      studioModeEnabled: studioModeEnabled,
+                                      previewScene: previewScene,
+                                      programScene: programScene,
+                                      previewThumbnail: previewThumbnail,
+                                      programThumbnail: programThumbnail,
+                                    ),
+
+                                    // Flat Structural Divider
+                                    _buildSectionDivider(),
+
+                                    const SizedBox(height: 4),
+
+                                    // Scene Monitor Grid (Non-interactive)
+                                    Expanded(
+                                      child: SceneGrid(
+                                        scenes: scenesState.scenes,
+                                        activeProgramScene: programScene,
+                                        activePreviewScene: previewScene,
+                                        studioModeEnabled: studioModeEnabled,
+                                        isLocked: true, // Always locked against reordering
+                                        padding: EdgeInsets.zero,
+                                        gridCount: gridCount,
+                                        crossAxisCount: 4,
+                                        alignment: Alignment.topCenter,
+                                        onSelectScene: null, // Touch disabled: view-only!
+                                        onCutScene: null, // Touch disabled: view-only!
+                                        onReorderScene: null, // Touch disabled: view-only!
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          )
+                        : Column(
+                            children: [
+                              // Top: Master Monitors (Preview & Program / View Only)
+                              _buildMasterRow(
+                                height: fixedMasterHeight,
+                                studioModeEnabled: studioModeEnabled,
+                                previewScene: previewScene,
+                                programScene: programScene,
+                                previewThumbnail: previewThumbnail,
+                                programThumbnail: programThumbnail,
+                              ),
+
+                              // Flat Structural Divider
+                              _buildSectionDivider(),
+
+                              const SizedBox(height: 4),
+
+                              // Scene Monitor Grid (Non-interactive)
+                              Expanded(
+                                child: SceneGrid(
+                                  scenes: scenesState.scenes,
+                                  activeProgramScene: programScene,
+                                  activePreviewScene: previewScene,
+                                  studioModeEnabled: studioModeEnabled,
+                                  isLocked: true, // Always locked against reordering
+                                  padding: EdgeInsets.zero,
+                                  gridCount: gridCount,
+                                  crossAxisCount: 2,
+                                  alignment: Alignment.topCenter,
+                                  onSelectScene: null, // Touch disabled: view-only!
+                                  onCutScene: null, // Touch disabled: view-only!
+                                  onReorderScene: null, // Touch disabled: view-only!
+                                ),
+                              ),
+
+                              const SizedBox(height: 6),
+
+                              // Audio Monitor Meter Bar (Aligned under scene monitor grid in portrait)
+                              const SceneAudioMonitorBar(isVertical: false),
+                            ],
+                          ),
                   ),
-
-                  const SizedBox(height: 6),
-
-                  // ── Audio Monitor Meter Bar (Aligned under scene monitor grid) ──
-                  const SceneAudioMonitorBar(),
                 ],
               ),
             );
@@ -200,10 +260,6 @@ class MultiviewOnlyScreen extends ConsumerWidget {
             ),
           ),
 
-          // View Only badge
-          _buildViewOnlyBadge(),
-          const SizedBox(width: 6),
-
           // 4/8 Grid Selector
           GridCountSelector(
             selectedCount: gridCount,
@@ -262,11 +318,7 @@ class MultiviewOnlyScreen extends ConsumerWidget {
 
         const SizedBox(width: 6),
 
-        // View Only badge
-        _buildViewOnlyBadge(),
-        const SizedBox(width: 6),
-
-        // Center-Right: 4/8 Grid Count Selector
+        // Center: 4/8 Grid Count Selector
         GridCountSelector(
           selectedCount: gridCount,
           onSelectCount: (c) =>
@@ -319,33 +371,6 @@ class MultiviewOnlyScreen extends ConsumerWidget {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildViewOnlyBadge() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3.5),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceElevated,
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: AppColors.surfaceBorder, width: 1.0),
-      ),
-      child: const Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.visibility_rounded, size: 10, color: AppColors.textMuted),
-          SizedBox(width: 4),
-          Text(
-            'MULTIVIEW',
-            style: TextStyle(
-              fontSize: 8.5,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 0.8,
-              color: AppColors.textMuted,
-            ),
-          ),
-        ],
-      ),
     );
   }
 
