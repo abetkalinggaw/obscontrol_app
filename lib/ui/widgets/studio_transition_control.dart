@@ -302,11 +302,7 @@ class _StudioTransitionControlState
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
-        side: BorderSide(color: AppColors.surfaceBorder, width: 1),
-      ),
+      backgroundColor: Colors.transparent,
       builder: (ctx) {
         return _TransitionDurationModal(
           initialDuration: currentDuration,
@@ -896,126 +892,203 @@ class _TransitionDurationModalState extends State<_TransitionDurationModal> {
     _duration = widget.initialDuration;
   }
 
+  void _updateDuration(int value) {
+    final clamped = value.clamp(50, 3000);
+    setState(() => _duration = clamped);
+    widget.onChanged(clamped);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final isLandscape =
-        MediaQuery.orientationOf(context) == Orientation.landscape;
+    final viewInsetsBottom = MediaQuery.of(context).viewInsets.bottom;
+    final paddingBottom = MediaQuery.of(context).padding.bottom;
 
-    return SafeArea(
-      left: false,
-      right: false,
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 480),
-          child: SingleChildScrollView(
-            padding: EdgeInsets.fromLTRB(
-              isLandscape ? 24 : 16,
-              isLandscape ? 10 : 12,
-              isLandscape ? 24 : 16,
-              16,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Modal Grabber & Header
-                Center(
-                  child: Container(
-                    width: 32,
-                    height: 4,
-                    margin: const EdgeInsets.only(bottom: 12),
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceBorderBold,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
+    return Container(
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        top: 16,
+        bottom: viewInsetsBottom > 0 ? viewInsetsBottom + 16 : paddingBottom + 24,
+      ),
+      decoration: const BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(8)),
+        border: Border(
+          top: BorderSide(
+            color: AppColors.surfaceBorderActive,
+            width: 1.0,
+          ),
+        ),
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Top Handle (Identical to QuickConnectSheet)
+            Center(
+              child: Container(
+                width: 36,
+                height: 3,
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceBorderActive,
+                  borderRadius: BorderRadius.circular(1.5),
                 ),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'TRANSITION DURATION',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0.8,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.surfaceElevated,
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: AppColors.surfaceBorder),
-                      ),
-                      child: Text(
-                        '$_duration ms',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w900,
-                          fontFamily: 'monospace',
-                          color: AppColors.previewAmber,
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Header Row: Title & Subtitle + Close Icon Button
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'TRANSITION DURATION',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.5,
+                          color: AppColors.textPrimary,
                         ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          const Flexible(
+                            child: Text(
+                              'Auto transition speed for Cut & Fade',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                color: AppColors.textSecondary,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          const Icon(
+                            Icons.speed_rounded,
+                            size: 13,
+                            color: AppColors.accentCyan,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
+                IconButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(
+                    Icons.close_rounded,
+                    color: AppColors.textSecondary,
+                  ),
+                  tooltip: 'Close',
+                ),
+              ],
+            ),
 
-                const SizedBox(height: 16),
+            const SizedBox(height: 16),
 
-                // Quick Preset Chips
+            // Current Value Badge & Quick Presets Label
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
                 const Text(
                   'QUICK PRESETS',
                   style: TextStyle(
-                    fontSize: 9.5,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textMuted,
-                    letterSpacing: 0.6,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textSecondary,
+                    letterSpacing: 0.5,
                   ),
                 ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceElevated,
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(
+                      color: AppColors.surfaceBorderActive,
+                      width: 1.0,
+                    ),
+                  ),
+                  child: Text(
+                    '$_duration ms',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      fontFamily: 'monospace',
+                      color: AppColors.accentCyan,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+
+            // Quick Presets Selector Segment
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceElevated,
+                borderRadius: BorderRadius.circular(5),
+                border: Border.all(
+                  color: AppColors.surfaceBorder,
+                  width: 1.0,
+                ),
+              ),
+              child: Center(
+                child: Wrap(
+                  alignment: WrapAlignment.center,
+                  runAlignment: WrapAlignment.center,
+                  spacing: 6,
+                  runSpacing: 6,
                   children: _presets.map((preset) {
                     final isSelected = _duration == preset;
                     return InkWell(
                       onTap: () {
                         Haptics.selection();
-                        setState(() => _duration = preset);
-                        widget.onChanged(preset);
+                        _updateDuration(preset);
                       },
                       borderRadius: BorderRadius.circular(4),
-                      child: Container(
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 150),
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
+                          horizontal: 14,
+                          vertical: 8,
                         ),
                         decoration: BoxDecoration(
                           color: isSelected
-                              ? AppColors.previewAmber.withValues(alpha: 0.2)
-                              : AppColors.surfaceElevated,
+                              ? AppColors.surface
+                              : Colors.transparent,
                           borderRadius: BorderRadius.circular(4),
-                          border: Border.all(
-                            color: isSelected
-                                ? AppColors.previewAmber
-                                : AppColors.surfaceBorder,
-                            width: 1.0,
-                          ),
+                          border: isSelected
+                              ? Border.all(
+                                  color: AppColors.accentCyan,
+                                  width: 1.0,
+                                )
+                              : Border.all(
+                                  color: Colors.transparent,
+                                  width: 1.0,
+                                ),
                         ),
                         child: Text(
                           '${preset}ms',
                           style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: isSelected
-                                ? FontWeight.w900
-                                : FontWeight.w700,
+                            fontSize: 11.5,
+                            fontWeight:
+                                isSelected ? FontWeight.w800 : FontWeight.w600,
                             color: isSelected
-                                ? AppColors.previewAmber
+                                ? AppColors.accentCyan
                                 : AppColors.textSecondary,
                           ),
                         ),
@@ -1023,74 +1096,84 @@ class _TransitionDurationModalState extends State<_TransitionDurationModal> {
                     );
                   }).toList(),
                 ),
-
-                const SizedBox(height: 16),
-
-                // Fine Adjustment Slider
-                const Text(
-                  'FINE ADJUSTMENT',
-                  style: TextStyle(
-                    fontSize: 9.5,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textMuted,
-                    letterSpacing: 0.6,
-                  ),
-                ),
-                SliderTheme(
-                  data: SliderTheme.of(context).copyWith(
-                    activeTrackColor: AppColors.previewAmber,
-                    inactiveTrackColor: AppColors.surfaceElevated,
-                    thumbColor: AppColors.previewAmber,
-                    trackHeight: 3,
-                    thumbShape: const RoundSliderThumbShape(
-                      enabledThumbRadius: 7,
-                    ),
-                    overlayShape: const RoundSliderOverlayShape(
-                      overlayRadius: 14,
-                    ),
-                  ),
-                  child: Slider(
-                    value: _duration.clamp(50, 3000).toDouble(),
-                    min: 50,
-                    max: 3000,
-                    divisions: 59, // 50ms steps
-                    onChanged: (val) {
-                      final rounded = (val / 50).round() * 50;
-                      setState(() => _duration = rounded);
-                      widget.onChanged(rounded);
-                    },
-                  ),
-                ),
-
-                const SizedBox(height: 8),
-
-                // Close button
-                ElevatedButton(
-                  onPressed: () {
-                    Haptics.selection();
-                    Navigator.of(context).pop();
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.surfaceElevated,
-                    foregroundColor: AppColors.textPrimary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(6),
-                      side: const BorderSide(color: AppColors.surfaceBorder),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                  ),
-                  child: const Text(
-                    'DONE',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.8,
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
-          ),
+
+            const SizedBox(height: 18),
+
+            // Fine Adjustment Slider Section
+            const Text(
+              'FINE ADJUSTMENT (50ms - 3000ms)',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textSecondary,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.surfaceElevated,
+                borderRadius: BorderRadius.circular(5),
+                border: Border.all(
+                  color: AppColors.surfaceBorder,
+                  width: 1.0,
+                ),
+              ),
+              child: SliderTheme(
+                data: SliderTheme.of(context).copyWith(
+                  activeTrackColor: AppColors.accentCyan,
+                  inactiveTrackColor: AppColors.surface,
+                  thumbColor: AppColors.accentCyan,
+                  trackHeight: 3,
+                  thumbShape: const RoundSliderThumbShape(
+                    enabledThumbRadius: 7,
+                  ),
+                  overlayShape: const RoundSliderOverlayShape(
+                    overlayRadius: 14,
+                  ),
+                ),
+                child: Slider(
+                  value: _duration.clamp(50, 3000).toDouble(),
+                  min: 50,
+                  max: 3000,
+                  divisions: 59, // 50ms steps
+                  onChanged: (val) {
+                    final rounded = (val / 50).round() * 50;
+                    if (rounded != _duration) {
+                      Haptics.selection();
+                      _updateDuration(rounded);
+                    }
+                  },
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 20),
+
+            // Full-width Action Button matching QuickConnectSheet Connect Button
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: FilledButton(
+                onPressed: () {
+                  Haptics.selection();
+                  Navigator.of(context).pop();
+                },
+                child: const Text(
+                  'DONE',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.5,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
