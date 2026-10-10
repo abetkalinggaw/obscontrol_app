@@ -898,180 +898,199 @@ class _TransitionDurationModalState extends State<_TransitionDurationModal> {
 
   @override
   Widget build(BuildContext context) {
+    final isLandscape =
+        MediaQuery.orientationOf(context) == Orientation.landscape;
+
     return SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Modal Grabber & Header
-            Center(
-              child: Container(
-                width: 32,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 12),
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceBorderBold,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
+      left: false,
+      right: false,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 480),
+          child: SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(
+              isLandscape ? 24 : 16,
+              isLandscape ? 10 : 12,
+              isLandscape ? 24 : 16,
+              16,
             ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Text(
-                  'TRANSITION DURATION',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 0.8,
-                    color: AppColors.textPrimary,
+                // Modal Grabber & Header
+                Center(
+                  child: Container(
+                    width: 32,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceBorderBold,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'TRANSITION DURATION',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.8,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceElevated,
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: AppColors.surfaceBorder),
+                      ),
+                      child: Text(
+                        '$_duration ms',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w900,
+                          fontFamily: 'monospace',
+                          color: AppColors.previewAmber,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 16),
+
+                // Quick Preset Chips
+                const Text(
+                  'QUICK PRESETS',
+                  style: TextStyle(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textMuted,
+                    letterSpacing: 0.6,
                   ),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceElevated,
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(color: AppColors.surfaceBorder),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: _presets.map((preset) {
+                    final isSelected = _duration == preset;
+                    return InkWell(
+                      onTap: () {
+                        Haptics.selection();
+                        setState(() => _duration = preset);
+                        widget.onChanged(preset);
+                      },
+                      borderRadius: BorderRadius.circular(4),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? AppColors.previewAmber.withValues(alpha: 0.2)
+                              : AppColors.surfaceElevated,
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(
+                            color: isSelected
+                                ? AppColors.previewAmber
+                                : AppColors.surfaceBorder,
+                            width: 1.0,
+                          ),
+                        ),
+                        child: Text(
+                          '${preset}ms',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: isSelected
+                                ? FontWeight.w900
+                                : FontWeight.w700,
+                            color: isSelected
+                                ? AppColors.previewAmber
+                                : AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Fine Adjustment Slider
+                const Text(
+                  'FINE ADJUSTMENT',
+                  style: TextStyle(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textMuted,
+                    letterSpacing: 0.6,
                   ),
-                  child: Text(
-                    '$_duration ms',
-                    style: const TextStyle(
-                      fontSize: 12,
+                ),
+                SliderTheme(
+                  data: SliderTheme.of(context).copyWith(
+                    activeTrackColor: AppColors.previewAmber,
+                    inactiveTrackColor: AppColors.surfaceElevated,
+                    thumbColor: AppColors.previewAmber,
+                    trackHeight: 3,
+                    thumbShape: const RoundSliderThumbShape(
+                      enabledThumbRadius: 7,
+                    ),
+                    overlayShape: const RoundSliderOverlayShape(
+                      overlayRadius: 14,
+                    ),
+                  ),
+                  child: Slider(
+                    value: _duration.clamp(50, 3000).toDouble(),
+                    min: 50,
+                    max: 3000,
+                    divisions: 59, // 50ms steps
+                    onChanged: (val) {
+                      final rounded = (val / 50).round() * 50;
+                      setState(() => _duration = rounded);
+                      widget.onChanged(rounded);
+                    },
+                  ),
+                ),
+
+                const SizedBox(height: 8),
+
+                // Close button
+                ElevatedButton(
+                  onPressed: () {
+                    Haptics.selection();
+                    Navigator.of(context).pop();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.surfaceElevated,
+                    foregroundColor: AppColors.textPrimary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(6),
+                      side: const BorderSide(color: AppColors.surfaceBorder),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                  ),
+                  child: const Text(
+                    'DONE',
+                    style: TextStyle(
+                      fontSize: 11,
                       fontWeight: FontWeight.w900,
-                      fontFamily: 'monospace',
-                      color: AppColors.previewAmber,
+                      letterSpacing: 0.8,
                     ),
                   ),
                 ),
               ],
             ),
-
-            const SizedBox(height: 16),
-
-            // Quick Preset Chips
-            const Text(
-              'QUICK PRESETS',
-              style: TextStyle(
-                fontSize: 9.5,
-                fontWeight: FontWeight.w800,
-                color: AppColors.textMuted,
-                letterSpacing: 0.6,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: _presets.map((preset) {
-                final isSelected = _duration == preset;
-                return InkWell(
-                  onTap: () {
-                    Haptics.selection();
-                    setState(() => _duration = preset);
-                    widget.onChanged(preset);
-                  },
-                  borderRadius: BorderRadius.circular(4),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? AppColors.previewAmber.withValues(alpha: 0.2)
-                          : AppColors.surfaceElevated,
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(
-                        color: isSelected
-                            ? AppColors.previewAmber
-                            : AppColors.surfaceBorder,
-                        width: 1.0,
-                      ),
-                    ),
-                    child: Text(
-                      '${preset}ms',
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: isSelected
-                            ? FontWeight.w900
-                            : FontWeight.w700,
-                        color: isSelected
-                            ? AppColors.previewAmber
-                            : AppColors.textSecondary,
-                      ),
-                    ),
-                  ),
-                );
-              }).toList(),
-            ),
-
-            const SizedBox(height: 16),
-
-            // Fine Adjustment Slider
-            const Text(
-              'FINE ADJUSTMENT',
-              style: TextStyle(
-                fontSize: 9.5,
-                fontWeight: FontWeight.w800,
-                color: AppColors.textMuted,
-                letterSpacing: 0.6,
-              ),
-            ),
-            SliderTheme(
-              data: SliderTheme.of(context).copyWith(
-                activeTrackColor: AppColors.previewAmber,
-                inactiveTrackColor: AppColors.surfaceElevated,
-                thumbColor: AppColors.previewAmber,
-                trackHeight: 3,
-                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
-                overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
-              ),
-              child: Slider(
-                value: _duration.clamp(50, 3000).toDouble(),
-                min: 50,
-                max: 3000,
-                divisions: 59, // 50ms steps
-                onChanged: (val) {
-                  final rounded = (val / 50).round() * 50;
-                  setState(() => _duration = rounded);
-                  widget.onChanged(rounded);
-                },
-              ),
-            ),
-
-            const SizedBox(height: 8),
-
-            // Close button
-            ElevatedButton(
-              onPressed: () {
-                Haptics.selection();
-                Navigator.of(context).pop();
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.surfaceElevated,
-                foregroundColor: AppColors.textPrimary,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(6),
-                  side: const BorderSide(color: AppColors.surfaceBorder),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 10),
-              ),
-              child: const Text(
-                'DONE',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 0.8,
-                ),
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

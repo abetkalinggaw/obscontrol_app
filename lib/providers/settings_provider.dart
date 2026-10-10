@@ -64,11 +64,13 @@ class SettingsNotifier extends Notifier<SettingsState> {
     final storage = ref.watch(storageServiceProvider);
     Haptics.enabled = storage.getHapticsEnabled();
     final keepScreenOn = storage.getKeepScreenOn();
-    if (keepScreenOn) {
-      WakelockPlus.enable();
-    } else {
-      WakelockPlus.disable();
-    }
+    try {
+      if (keepScreenOn) {
+        WakelockPlus.enable().catchError((_) {});
+      } else {
+        WakelockPlus.disable().catchError((_) {});
+      }
+    } catch (_) {}
     return SettingsState(
       profiles: storage.loadProfiles(),
       recentDevices: storage.loadRecentDevices(),
@@ -206,11 +208,13 @@ class SettingsNotifier extends Notifier<SettingsState> {
   }
 
   Future<void> setKeepScreenOn(bool keepOn) async {
-    if (keepOn) {
-      await WakelockPlus.enable();
-    } else {
-      await WakelockPlus.disable();
-    }
+    try {
+      if (keepOn) {
+        await WakelockPlus.enable().catchError((_) {});
+      } else {
+        await WakelockPlus.disable().catchError((_) {});
+      }
+    } catch (_) {}
     await _storage.setKeepScreenOn(keepOn);
     state = state.copyWith(keepScreenOn: keepOn);
   }

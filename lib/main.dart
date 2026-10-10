@@ -90,7 +90,7 @@ class _ObsControlAppState extends ConsumerState<ObsControlApp>
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'OBS Mobile Controller',
+      title: 'MULMEDMUMED',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
       home: const MainNavigationScreen(),

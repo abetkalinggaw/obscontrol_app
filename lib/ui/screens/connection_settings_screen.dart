@@ -4,7 +4,9 @@ import '../../core/constants/app_colors.dart';
 import '../../core/utils/formatters.dart';
 import '../../core/utils/haptics.dart';
 import '../../models/connection_state.dart';
+import '../../providers/audio_provider.dart';
 import '../../providers/obs_provider.dart';
+import '../../providers/scenes_provider.dart';
 import '../../providers/settings_provider.dart';
 import '../dialogs/quick_connect_sheet.dart';
 import '../dialogs/connection_guide_dialog.dart';
@@ -746,6 +748,10 @@ class _ConnectionSettingsScreenState extends ConsumerState<ConnectionSettingsScr
     final insets = FloatingBarsInsets.of(context);
     final obsState = ref.watch(obsProvider);
     final settingsState = ref.watch(settingsProvider);
+    final scenesState = ref.watch(scenesProvider);
+    final transitionDuration = ref.watch(transitionDurationProvider);
+    final audioMode = ref.watch(audioViewModeProvider);
+    final gridCount = ref.watch(gridCountProvider);
     final isConnected = obsState.status == ObsConnectionStatus.connected;
 
     return ListView(
@@ -1461,6 +1467,290 @@ class _ConnectionSettingsScreenState extends ConsumerState<ConnectionSettingsScr
                   ref.read(settingsProvider.notifier).setAutoReconnect(val);
                 },
               ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 20),
+
+        // Section: Broadcast & Production Controls
+        const Text(
+          'BROADCAST & PRODUCTION CONTROLS',
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w900,
+            color: AppColors.textSecondary,
+            letterSpacing: 1.0,
+          ),
+        ),
+        const SizedBox(height: 6),
+
+        Material(
+          color: AppColors.surface,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(3)),
+            side: BorderSide(color: AppColors.surfaceBorder, width: 1.5),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Transition Duration setting
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Studio Transition Duration',
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                            ),
+                            SizedBox(height: 2),
+                            Text(
+                              'Default duration for scene transitions in Studio Mode',
+                              style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+                            ),
+                          ],
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceElevated,
+                            borderRadius: BorderRadius.circular(3),
+                            border: Border.all(
+                              color: AppColors.previewAmber.withValues(alpha: 0.6),
+                              width: 1.0,
+                            ),
+                          ),
+                          child: Text(
+                            '${transitionDuration}ms',
+                            style: const TextStyle(
+                              fontSize: 11.5,
+                              fontFamily: 'monospace',
+                              fontWeight: FontWeight.w900,
+                              color: AppColors.previewAmber,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [100, 250, 300, 500, 1000].map((preset) {
+                        final isSelected = transitionDuration == preset;
+                        return Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 2.0),
+                            child: InkWell(
+                              onTap: () {
+                                Haptics.selection();
+                                ref.read(transitionDurationProvider.notifier).setDuration(preset);
+                              },
+                              borderRadius: BorderRadius.circular(3),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 6),
+                                alignment: Alignment.center,
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? AppColors.previewAmber.withValues(alpha: 0.2)
+                                      : AppColors.surfaceElevated,
+                                  borderRadius: BorderRadius.circular(3),
+                                  border: Border.all(
+                                    color: isSelected ? AppColors.previewAmber : AppColors.surfaceBorder,
+                                    width: 1.0,
+                                  ),
+                                ),
+                                child: Text(
+                                  '${preset}ms',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: isSelected ? FontWeight.w900 : FontWeight.w700,
+                                    color: isSelected ? AppColors.previewAmber : AppColors.textSecondary,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1, color: AppColors.surfaceBorder),
+
+              // Audio Mixer Strip Layout
+              ListTile(
+                title: const Text('Audio Mixer Default Layout', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                subtitle: Text(
+                  audioMode == AudioMixerViewMode.vertical ? 'Vertical channel faders' : 'Horizontal meters & strips',
+                  style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                ),
+                trailing: SegmentedButton<AudioMixerViewMode>(
+                  segments: const [
+                    ButtonSegment(
+                      value: AudioMixerViewMode.vertical,
+                      label: Text('Vertical', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700)),
+                      icon: Icon(Icons.view_column_rounded, size: 14),
+                    ),
+                    ButtonSegment(
+                      value: AudioMixerViewMode.horizontal,
+                      label: Text('Horizontal', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700)),
+                      icon: Icon(Icons.table_rows_rounded, size: 14),
+                    ),
+                  ],
+                  selected: {audioMode},
+                  onSelectionChanged: (newSelection) {
+                    Haptics.selection();
+                    ref.read(audioViewModeProvider.notifier).setMode(newSelection.first);
+                  },
+                  style: SegmentedButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    backgroundColor: AppColors.surfaceElevated,
+                    selectedBackgroundColor: AppColors.accentCyan.withValues(alpha: 0.2),
+                    selectedForegroundColor: AppColors.accentCyan,
+                  ),
+                ),
+              ),
+              const Divider(height: 1, color: AppColors.surfaceBorder),
+
+              // Multiview Camera Grid Density
+              ListTile(
+                title: const Text('Multiview Grid Tile Count', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                subtitle: Text(
+                  '$gridCount scene camera tiles displayed in multiview grid',
+                  style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                ),
+                trailing: SegmentedButton<int>(
+                  segments: const [
+                    ButtonSegment(
+                      value: 4,
+                      label: Text('4 Cameras', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700)),
+                    ),
+                    ButtonSegment(
+                      value: 8,
+                      label: Text('8 Cameras', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700)),
+                    ),
+                  ],
+                  selected: {gridCount},
+                  onSelectionChanged: (newSelection) {
+                    Haptics.selection();
+                    ref.read(gridCountProvider.notifier).setCount(newSelection.first);
+                  },
+                  style: SegmentedButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    backgroundColor: AppColors.surfaceElevated,
+                    selectedBackgroundColor: AppColors.accentCyan.withValues(alpha: 0.2),
+                    selectedForegroundColor: AppColors.accentCyan,
+                  ),
+                ),
+              ),
+              const Divider(height: 1, color: AppColors.surfaceBorder),
+
+              // Lock Multiview Layout
+              SwitchListTile(
+                value: scenesState.isLocked,
+                title: const Text('Lock Multiview Scene Ordering', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                subtitle: const Text('Prevents accidental scene drag-reordering during live broadcast', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                activeThumbColor: AppColors.connectedGreen,
+                onChanged: (val) {
+                  ref.read(scenesProvider.notifier).toggleMultiviewLock();
+                },
+              ),
+            ],
+          ),
+        ),
+
+        const SizedBox(height: 20),
+
+        // Section: About MULMEDMUMED
+        const Text(
+          'ABOUT MULMEDMUMED',
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w900,
+            color: AppColors.textSecondary,
+            letterSpacing: 1.0,
+          ),
+        ),
+        const SizedBox(height: 6),
+
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(color: AppColors.surfaceBorder, width: 1.5),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: AppColors.accentCyan.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: AppColors.accentCyan, width: 1.2),
+                    ),
+                    child: const Icon(
+                      Icons.videocam_rounded,
+                      color: AppColors.accentCyan,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'MULMEDMUMED',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1.2,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'Version 0.1.0+1 • Production Companion',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.accentCyan,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'MULMEDMUMED is a high-precision, low-latency mobile broadcast controller and multiview monitor designed for OBS Studio and live video production. Switch scenes, control audio faders, trigger studio transitions, and monitor broadcast telemetry in real-time without leaving your creative zone.',
+                style: TextStyle(
+                  fontSize: 11.5,
+                  color: AppColors.textSecondary,
+                  height: 1.45,
+                ),
+              ),
+              const SizedBox(height: 14),
+              const Divider(height: 1, color: AppColors.surfaceBorder),
+              const SizedBox(height: 12),
+              _buildTelemetryRow('TARGET ENGINE', 'OBS Studio / vMix / Streamlabs'),
+              const SizedBox(height: 8),
+              _buildTelemetryRow('PROTOCOL', 'obs-websocket v5 (JSON-RPC)'),
+              const SizedBox(height: 8),
+              _buildTelemetryRow('PLATFORM', 'Android Hardware Surface'),
             ],
           ),
         ),

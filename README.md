@@ -1,8 +1,7 @@
-# OBS Control App
+# MULMEDMUMED
+> **MULMEDMUMED** is a high-precision, low-latency mobile broadcast controller and multiview monitor designed for OBS Studio and live video production. Switch scenes, control audio, trigger transitions, and monitor stream health directly from your mobile device.
 
-A Flutter mobile app to remotely control and monitor your livestream from your phone: switch scenes, go on/off air, and keep an eye on stream health, without sitting at the production PC.
-
-> **Status:** 🚧 In development
+> **Status:** 🚧 In active development
 
 <!-- TODO: add banner / demo GIF here -->
 <!-- ![Screenshot](docs/screenshots/home.png) -->
