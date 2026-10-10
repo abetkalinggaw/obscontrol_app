@@ -58,11 +58,15 @@ class VmixHttpService implements BroadcastService {
     onStatusChanged?.call(status, error);
   }
 
+  @visibleForTesting
+  void parseVmixXmlForTesting(String xml) => _parseVmixXml(xml);
+
   @override
   Future<void> connect({
     required String host,
     required int port,
     String? password,
+    HttpClient? httpClient,
   }) async {
     _userExplicitlyDisconnected = false;
     _reconnectTimer?.cancel();
@@ -72,7 +76,7 @@ class VmixHttpService implements BroadcastService {
     _password = password;
     _updateStatus(ObsConnectionStatus.connecting);
 
-    _httpClient = HttpClient()..connectionTimeout = const Duration(seconds: 5);
+    _httpClient = httpClient ?? (HttpClient()..connectionTimeout = const Duration(seconds: 5));
 
     try {
       final success = await _fetchStatus();
